@@ -59,7 +59,7 @@ const AccountPage = () => {
     if (isAuthenticated) {
       fetchData();
     }
-  }, [isAuthenticated, activeTab]);
+  }, [isAuthenticated, activeTab, ordersPage]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -367,9 +367,13 @@ const AccountPage = () => {
                     </DialogHeader>
                     <div className="py-4">
                       <p className="mb-4">Êtes-vous sûr de vouloir annuler la commande <strong>{cancelConfirm?.order_id}</strong> ?</p>
-                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-                        <p className="text-sm text-amber-800 font-medium">Conditions de remboursement</p>
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                        <p className="text-sm text-amber-800 font-medium">Remboursement</p>
                         <p className="text-sm text-amber-700 mt-1">Le remboursement de <strong>{cancelConfirm?.total?.toFixed(2)}€</strong> sera effectué sous 10 jours ouvrés sur votre carte de paiement.</p>
+                      </div>
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                        <p className="text-sm text-red-800 font-medium">Points de fidélité</p>
+                        <p className="text-sm text-red-700 mt-1">Vous perdrez <strong>{Math.floor(cancelConfirm?.subtotal || cancelConfirm?.total || 0)} points</strong> de fidélité associés à cette commande.</p>
                       </div>
                     </div>
                     <DialogFooter className="flex gap-3">
@@ -379,7 +383,7 @@ const AccountPage = () => {
                         onClick={async () => {
                           try {
                             const res = await axios.post(`${API}/orders/${cancelConfirm.order_id}/cancel`, {}, { headers: { Authorization: `Bearer ${token}` }});
-                            toast.success('Commande annulée', { description: res.data.message });
+                            toast.success('Commande annulée', { description: `${res.data.points_deducted} points de fidélité déduits. Remboursement sous 10 jours.` });
                             setCancelConfirm(null);
                             fetchData();
                           } catch (err) {
@@ -578,57 +582,94 @@ const AccountPage = () => {
                           <p className="font-medium">{address.label}</p>
                           <p className="text-sm text-muted-foreground">{address.street}</p>
                           <p className="text-sm text-muted-foreground">{address.postal_code} {address.city}</p>
-                          {address.door_number && (
-                            <p className="text-sm text-muted-foreground">Porte : {address.door_number}</p>
-                          )}
-                          {address.digicode && (
-                            <p className="text-sm text-muted-foreground">Digicode : {address.digicode}</p>
-                          )}
+                          {address.door_number && <p className="text-sm text-muted-foreground">Porte : {address.door_number}</p>}
+                          {address.digicode && <p className="text-sm text-muted-foreground">Digicode : {address.digicode}</p>}
+                          {address.floor && <p className="text-sm text-muted-foreground">Étage : {address.floor}</p>}
                           {address.is_default && (
-                            <span className="inline-block mt-2 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
-                              Adresse par défaut
-                            </span>
+                            <span className="inline-block mt-2 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">Par défaut</span>
                           )}
                         </div>
                         <div className="flex gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => {
-                              const newLabel = prompt('Nom de l\'adresse', address.label);
-                              if (newLabel !== null) {
-                                const newStreet = prompt('Adresse', address.street);
-                                const newPostal = prompt('Code postal', address.postal_code);
-                                const newCity = prompt('Ville', address.city);
-                                const newDoor = prompt('Numéro de porte', address.door_number || '');
-                                const newDigicode = prompt('Digicode', address.digicode || '');
-                                const newFloor = prompt('Étage', address.floor || '');
-                                if (newLabel && newStreet && newPostal && newCity) {
-                                  axios.put(`${API}/users/addresses/${address.address_id}`, {
-                                    label: newLabel, street: newStreet, postal_code: newPostal, city: newCity,
-                                    door_number: newDoor || '', digicode: newDigicode || '', floor: newFloor || '',
-                                    elevator: address.elevator, is_default: address.is_default
-                                  }, { headers: { Authorization: `Bearer ${token}` }})
-                                    .then(() => { toast.success('Adresse modifiée'); fetchData(); })
-                                    .catch(() => toast.error('Erreur'));
-                                }
-                              }
-                            }}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => setEditingAddress({...address})} data-testid={`edit-addr-${address.address_id}`}>
                             Modifier
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-destructive"
-                            onClick={() => handleDeleteAddress(address.address_id)}
-                          >
+                          <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteAddress(address.address_id)}>
                             Supprimer
                           </Button>
                         </div>
                       </div>
                     ))}
                   </div>
+                )}
+
+                {/* Edit Address Dialog */}
+                {editingAddress && (
+                  <Dialog open={!!editingAddress} onOpenChange={() => setEditingAddress(null)}>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Modifier l'adresse</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={async (e) => {
+                        e.preventDefault();
+                        try {
+                          await axios.put(`${API}/users/addresses/${editingAddress.address_id}`, {
+                            label: editingAddress.label,
+                            street: editingAddress.street,
+                            city: editingAddress.city,
+                            postal_code: editingAddress.postal_code,
+                            door_number: editingAddress.door_number || '',
+                            digicode: editingAddress.digicode || '',
+                            floor: editingAddress.floor || '',
+                            elevator: editingAddress.elevator || false,
+                            is_default: editingAddress.is_default || false
+                          }, { headers: { Authorization: `Bearer ${token}` }});
+                          toast.success('Adresse modifiée');
+                          setEditingAddress(null);
+                          fetchData();
+                        } catch (err) {
+                          toast.error('Erreur', { description: 'Impossible de modifier l\'adresse.' });
+                        }
+                      }} className="space-y-3">
+                        <div>
+                          <label className="form-label">Nom</label>
+                          <input type="text" value={editingAddress.label} onChange={(e) => setEditingAddress({...editingAddress, label: e.target.value})} className="form-input" required />
+                        </div>
+                        <div>
+                          <label className="form-label">Adresse</label>
+                          <input type="text" value={editingAddress.street} onChange={(e) => setEditingAddress({...editingAddress, street: e.target.value})} className="form-input" required />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="form-label">Code postal</label>
+                            <input type="text" value={editingAddress.postal_code} onChange={(e) => setEditingAddress({...editingAddress, postal_code: e.target.value})} className="form-input" required />
+                          </div>
+                          <div>
+                            <label className="form-label">Ville</label>
+                            <input type="text" value={editingAddress.city} onChange={(e) => setEditingAddress({...editingAddress, city: e.target.value})} className="form-input" required />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <label className="form-label">N° porte</label>
+                            <input type="text" value={editingAddress.door_number || ''} onChange={(e) => setEditingAddress({...editingAddress, door_number: e.target.value})} className="form-input" />
+                          </div>
+                          <div>
+                            <label className="form-label">Digicode</label>
+                            <input type="text" value={editingAddress.digicode || ''} onChange={(e) => setEditingAddress({...editingAddress, digicode: e.target.value})} className="form-input" />
+                          </div>
+                          <div>
+                            <label className="form-label">Étage</label>
+                            <input type="text" value={editingAddress.floor || ''} onChange={(e) => setEditingAddress({...editingAddress, floor: e.target.value})} className="form-input" />
+                          </div>
+                        </div>
+                        <label className="flex items-center gap-2">
+                          <input type="checkbox" checked={editingAddress.elevator || false} onChange={(e) => setEditingAddress({...editingAddress, elevator: e.target.checked})} className="rounded" />
+                          <span className="text-sm">Ascenseur</span>
+                        </label>
+                        <Button type="submit" className="w-full btn-primary">Enregistrer</Button>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
                 )}
               </div>
             )}

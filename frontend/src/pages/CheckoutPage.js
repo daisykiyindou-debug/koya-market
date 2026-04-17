@@ -119,6 +119,10 @@ const CheckoutPage = () => {
     }
 
     setSubmitting(true);
+    
+    // Simulate payment processing delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     try {
       const response = await axios.post(`${API}/orders`, {
         address_id: selectedAddress,
@@ -130,15 +134,15 @@ const CheckoutPage = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      toast.success('Commande confirmée !', { 
-        description: `Votre commande ${response.data.order.order_id} a été enregistrée.` 
+      toast.success('Paiement accepté !', { 
+        description: `Commande ${response.data.order.order_id} confirmée. Merci pour votre achat !` 
       });
       
       await fetchCart();
       navigate('/compte/commandes');
     } catch (error) {
       const message = error.response?.data?.detail || 'Impossible de passer la commande.';
-      toast.error('Erreur', { description: message });
+      toast.error('Paiement refusé', { description: message });
     } finally {
       setSubmitting(false);
     }
@@ -449,13 +453,27 @@ const CheckoutPage = () => {
                   </p>
                 </div>
 
-                {/* Payment Info (MOCKED) */}
-                <div className="border-2 border-dashed border-border rounded-xl p-6 text-center mb-6">
-                  <CreditCard className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
-                  <p className="font-medium mb-1">Paiement simulé</p>
-                  <p className="text-sm text-muted-foreground">
-                    Le paiement sera simulé pour cette démo. Aucune transaction réelle ne sera effectuée.
-                  </p>
+                {/* Simulated Payment Form */}
+                <div className="border rounded-xl p-6 mb-6 space-y-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <CreditCard className="w-6 h-6 text-primary" />
+                    <span className="font-medium">Carte bancaire</span>
+                  </div>
+                  <div>
+                    <label className="form-label">Numéro de carte</label>
+                    <input type="text" defaultValue="4242 4242 4242 4242" className="form-input" readOnly data-testid="card-number" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="form-label">Date d'expiration</label>
+                      <input type="text" defaultValue="12/28" className="form-input" readOnly />
+                    </div>
+                    <div>
+                      <label className="form-label">CVV</label>
+                      <input type="text" defaultValue="123" className="form-input" readOnly />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground text-center">Mode démo — Aucune transaction réelle</p>
                 </div>
 
                 <div className="flex gap-4">
@@ -468,7 +486,12 @@ const CheckoutPage = () => {
                     disabled={submitting}
                     data-testid="confirm-order-btn"
                   >
-                    {submitting ? 'Traitement...' : `Confirmer la commande - ${total.toFixed(2)}€`}
+                    {submitting ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Paiement en cours...
+                      </span>
+                    ) : `Payer ${total.toFixed(2)}€`}
                   </Button>
                 </div>
               </div>

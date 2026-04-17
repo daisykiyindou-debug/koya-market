@@ -925,6 +925,9 @@ async def create_order(order_data: OrderCreate, user: dict = Depends(get_current
     
     await db.orders.insert_one(order)
     
+    # Remove MongoDB _id from order before returning
+    order.pop("_id", None)
+    
     # Add loyalty points (1€ = 1 point)
     points_earned = int(subtotal)
     await db.users.update_one(
@@ -965,12 +968,26 @@ async def cancel_order(order_id: str, user: dict = Depends(get_current_user)):
     except ValueError:
         pass
     
+    # Deduct loyalty points earned from this order
+    points_to_deduct = int(order.get("subtotal", 0))
+    if points_to_deduct > 0:
+        user_doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+        current_points = user_doc.get("loyalty_points", 0)
+        actual_deduction = min(points_to_deduct, current_points)
+        if actual_deduction > 0:
+            await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"loyalty_points": -actual_deduction}})
+    
     await db.orders.update_one({"order_id": order_id}, {"$set": {
         "status": "cancelled",
-        "cancelled_at": datetime.now(timezone.utc).isoformat()
+        "cancelled_at": datetime.now(timezone.utc).isoformat(),
+        "points_deducted": points_to_deduct
     }})
     
-    return {"message": "Commande annulée. Le remboursement sera effectué sous 10 jours sur votre carte de paiement.", "refund_amount": order["total"]}
+    return {
+        "message": "Commande annulée. Le remboursement sera effectué sous 10 jours sur votre carte de paiement.",
+        "refund_amount": order["total"],
+        "points_deducted": points_to_deduct
+    }
 
 @api_router.get("/orders")
 async def get_orders(user: dict = Depends(get_current_user), page: int = 1, per_page: int = 5):
