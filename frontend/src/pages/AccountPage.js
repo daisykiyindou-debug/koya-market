@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, Package, Gift, MapPin, Lock, LogOut, ChevronRight, Clock, Truck, CheckCircle, Copy, Check } from 'lucide-react';
+import { User, Package, Gift, MapPin, Lock, LogOut, ChevronRight, Clock, Truck, CheckCircle, Copy, Check, Users, Share2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
 import { useAuth } from '../context/AuthContext';
@@ -36,7 +36,7 @@ const AccountPage = () => {
 
     // Determine active tab from URL
     const path = location.pathname.split('/').pop();
-    if (['commandes', 'fidelite', 'adresses', 'securite'].includes(path)) {
+    if (['commandes', 'fidelite', 'adresses', 'securite', 'parrainage'].includes(path)) {
       setActiveTab(path);
     } else {
       setActiveTab('profile');
@@ -145,6 +145,7 @@ const AccountPage = () => {
     { id: 'profile', label: 'Mon profil', icon: User, path: '/compte' },
     { id: 'commandes', label: 'Mes commandes', icon: Package, path: '/compte/commandes' },
     { id: 'fidelite', label: 'Programme fidélité', icon: Gift, path: '/compte/fidelite' },
+    { id: 'parrainage', label: 'Parrainage', icon: Users, path: '/compte/parrainage' },
     { id: 'adresses', label: 'Mes adresses', icon: MapPin, path: '/compte/adresses' },
     { id: 'securite', label: 'Sécurité', icon: Lock, path: '/compte/securite' },
   ];
@@ -294,16 +295,28 @@ const AccountPage = () => {
                           </span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <p className="text-sm text-muted-foreground">
-                            {order.items.length} article(s)
-                          </p>
-                          <p className="font-semibold">{order.total.toFixed(2)}€</p>
+                          <div>
+                            <p className="text-sm text-muted-foreground">
+                              {order.items.length} article(s)
+                            </p>
+                            {order.driver_name && (
+                              <p className="text-sm text-muted-foreground">
+                                Livreur : {order.driver_name}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-right flex items-center gap-3">
+                            <p className="font-semibold">{order.total.toFixed(2)}€</p>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => navigate(`/commande/${order.order_id}`)}
+                              data-testid={`track-order-${order.order_id}`}
+                            >
+                              Suivre
+                            </Button>
+                          </div>
                         </div>
-                        {order.driver_name && (
-                          <p className="text-sm text-muted-foreground mt-2">
-                            Livreur : {order.driver_name}
-                          </p>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -549,10 +562,140 @@ const AccountPage = () => {
                 )}
               </div>
             )}
+
+            {/* Referral Tab */}
+            {activeTab === 'parrainage' && (
+              <div className="space-y-6" data-testid="referral-tab">
+                <ReferralSection token={token} />
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
+  );
+};
+
+const ReferralSection = ({ token }) => {
+  const [referralInfo, setReferralInfo] = useState(null);
+  const [referralCode, setReferralCode] = useState('');
+  const [applying, setApplying] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (token) {
+      axios.get(`${API}/referral`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => setReferralInfo(res.data))
+        .catch(() => {});
+    }
+  }, [token]);
+
+  const handleApplyReferral = async () => {
+    if (!referralCode.trim()) return;
+    setApplying(true);
+    try {
+      const res = await axios.post(`${API}/referral/apply`, { referral_code: referralCode }, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Parrainage appliqué !', { description: res.data.message });
+      setReferralCode('');
+    } catch (error) {
+      const msg = error.response?.data?.detail || 'Code de parrainage invalide';
+      toast.error('Erreur', { description: msg });
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const handleCopyCode = () => {
+    if (referralInfo?.referral_code) {
+      navigator.clipboard.writeText(referralInfo.referral_code);
+      setCopied(true);
+      toast.success('Code copié !');
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <>
+      <div className="bg-gradient-to-r from-secondary to-secondary/80 text-white rounded-2xl p-8">
+        <div className="flex items-center gap-3 mb-4">
+          <Share2 className="w-8 h-8" />
+          <h2 className="font-heading text-2xl font-semibold">Parrainage</h2>
+        </div>
+        <p className="text-white/80 mb-6">
+          Invitez vos amis et gagnez chacun 10 points de fidélité !
+        </p>
+        
+        {referralInfo && (
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6">
+            <p className="text-white/70 text-sm mb-2">Votre code de parrainage</p>
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-2xl font-bold tracking-wider" data-testid="referral-code">
+                {referralInfo.referral_code}
+              </span>
+              <Button variant="ghost" size="icon" onClick={handleCopyCode} className="text-white hover:bg-white/20">
+                {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+              </Button>
+            </div>
+            <p className="text-white/60 text-sm mt-3">
+              {referralInfo.referrals_count} ami(s) parrainé(s)
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl p-6">
+        <h3 className="font-heading text-lg font-semibold mb-4">Utiliser un code de parrainage</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Un ami vous a partagé son code ? Entrez-le ci-dessous pour recevoir vos 10 points.
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value)}
+            placeholder="Code KOYA-XXXXXX"
+            className="flex-1 form-input"
+            data-testid="apply-referral-input"
+          />
+          <Button onClick={handleApplyReferral} disabled={applying || !referralCode.trim()} className="btn-primary" data-testid="apply-referral-btn">
+            {applying ? '...' : 'Appliquer'}
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6">
+        <h3 className="font-heading text-lg font-semibold mb-4">Comment ça marche ?</h3>
+        <div className="space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center shrink-0">
+              <span className="font-semibold text-secondary">1</span>
+            </div>
+            <div>
+              <p className="font-medium">Partagez votre code</p>
+              <p className="text-sm text-muted-foreground">Envoyez votre code de parrainage à vos amis</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center shrink-0">
+              <span className="font-semibold text-secondary">2</span>
+            </div>
+            <div>
+              <p className="font-medium">Votre ami s'inscrit</p>
+              <p className="text-sm text-muted-foreground">Il entre votre code dans son espace Mon Compte</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center shrink-0">
+              <span className="font-semibold text-secondary">3</span>
+            </div>
+            <div>
+              <p className="font-medium">Vous gagnez tous les deux !</p>
+              <p className="text-sm text-muted-foreground">Chacun reçoit 10 points de fidélité</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 };
 

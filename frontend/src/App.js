@@ -17,6 +17,8 @@ import AccountPage from './pages/AccountPage';
 import ContactPage from './pages/ContactPage';
 import CareersPage from './pages/CareersPage';
 import LegalPage from './pages/LegalPage';
+import DeliveryZonePage from './pages/DeliveryZonePage';
+import OrderTrackingPage from './pages/OrderTrackingPage';
 
 import './App.css';
 
@@ -60,6 +62,8 @@ const AppRouter = () => {
       <Route path="/about" element={<Layout><AboutPage /></Layout>} />
       <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
       <Route path="/carrieres" element={<Layout><CareersPage /></Layout>} />
+      <Route path="/carrieres/:jobId" element={<Layout><CareersPage /></Layout>} />
+      <Route path="/zones-livraison" element={<Layout><DeliveryZonePage /></Layout>} />
       <Route path="/cgv" element={<Layout><LegalPage type="cgv" /></Layout>} />
       <Route path="/confidentialite" element={<Layout><LegalPage type="confidentialite" /></Layout>} />
       <Route path="/mentions-legales" element={<Layout><LegalPage type="mentions-legales" /></Layout>} />
@@ -111,10 +115,26 @@ const AppRouter = () => {
         } 
       />
       <Route 
+        path="/compte/parrainage" 
+        element={
+          <ProtectedRoute>
+            <Layout><AccountPage /></Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
         path="/compte/securite" 
         element={
           <ProtectedRoute>
             <Layout><AccountPage /></Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/commande/:orderId" 
+        element={
+          <ProtectedRoute>
+            <Layout><OrderTrackingPage /></Layout>
           </ProtectedRoute>
         } 
       />

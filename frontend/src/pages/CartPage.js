@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, AlertCircle, Tag, Gift, Check } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -21,6 +21,16 @@ const CartPage = () => {
   const [loyaltyCode, setLoyaltyCode] = useState('');
   const [loyaltyApplied, setLoyaltyApplied] = useState(null);
   const [loyaltyLoading, setLoyaltyLoading] = useState(false);
+
+  const [loyaltyInfo, setLoyaltyInfo] = useState(null);
+
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      axios.get(`${API}/loyalty`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => setLoyaltyInfo(res.data))
+        .catch(() => {});
+    }
+  }, [isAuthenticated, token]);
 
   const handleQuantityChange = async (productId, quantity) => {
     try {
@@ -281,6 +291,29 @@ const CartPage = () => {
                   <Gift className="w-4 h-4 text-primary" />
                   Code fidélité
                 </label>
+                
+                {/* Loyalty Points Info Banner */}
+                {loyaltyInfo && loyaltyInfo.points >= 100 && !loyaltyApplied && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 mb-3" data-testid="loyalty-points-info">
+                    <p className="text-sm text-primary font-medium">
+                      Vous avez {loyaltyInfo.points} points de fidélité !
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Vous pouvez bénéficier de -5€ de réduction en{' '}
+                      <button onClick={() => navigate('/compte/fidelite')} className="text-primary underline font-medium">
+                        générant votre code dans Fidélité
+                      </button>
+                    </p>
+                  </div>
+                )}
+                {loyaltyInfo && loyaltyInfo.points > 0 && loyaltyInfo.points < 100 && !loyaltyApplied && (
+                  <div className="bg-muted/50 rounded-xl p-3 mb-3">
+                    <p className="text-xs text-muted-foreground">
+                      Vous avez {loyaltyInfo.points} points. Encore {100 - loyaltyInfo.points} points pour obtenir 5€ de réduction !
+                    </p>
+                  </div>
+                )}
+
                 {loyaltyApplied ? (
                   <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl p-3">
                     <div className="flex items-center gap-2 text-green-700">

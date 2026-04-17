@@ -43,7 +43,7 @@ const Footer = () => {
     aide: [
       { name: 'Contact', path: '/contact' },
       { name: 'FAQ', path: '/contact#faq' },
-      { name: 'Zones de livraison', path: '/#zones' },
+      { name: 'Zones de livraison', path: '/zones-livraison' },
       { name: 'KÔYA Market Pro', path: 'https://pro.koyamarket.com', external: true },
     ],
     legal: [

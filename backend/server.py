@@ -218,6 +218,9 @@ class PromoCodeCheck(BaseModel):
 class LoyaltyCodeRedeem(BaseModel):
     code: str
 
+class ReferralApply(BaseModel):
+    referral_code: str
+
 class FAQResponse(BaseModel):
     question: str
     answer: str
@@ -885,6 +888,8 @@ async def create_order(order_data: OrderCreate, user: dict = Depends(get_current
     total = subtotal + delivery_fee - loyalty_discount
     
     # Create order
+    import random as _random
+    driver_names = ["Mamadou D.", "Ibrahim K.", "Fatou S.", "Abdoulaye M.", "Aïssatou B.", "Moussa T."]
     order_id = f"ORD-{uuid.uuid4().hex[:8].upper()}"
     order = {
         "order_id": order_id,
@@ -899,7 +904,19 @@ async def create_order(order_data: OrderCreate, user: dict = Depends(get_current
         "delivery_date": order_data.delivery_date,
         "delivery_slot": order_data.delivery_slot,
         "delivery_details": order_data.delivery_details,
-        "driver_name": None,
+        "driver_name": _random.choice(driver_names),
+        "driver_phone": f"06 {_random.randint(10,99)} {_random.randint(10,99)} {_random.randint(10,99)} {_random.randint(10,99)}",
+        "tracking": {
+            "steps": [
+                {"status": "pending", "label": "Commande confirmée", "time": datetime.now(timezone.utc).isoformat(), "done": True},
+                {"status": "preparing", "label": "En préparation", "time": (datetime.now(timezone.utc) + timedelta(minutes=15)).isoformat(), "done": False},
+                {"status": "delivering", "label": "En livraison", "time": (datetime.now(timezone.utc) + timedelta(minutes=90)).isoformat(), "done": False},
+                {"status": "delivered", "label": "Livrée", "time": (datetime.now(timezone.utc) + timedelta(minutes=150)).isoformat(), "done": False}
+            ],
+            "estimated_arrival": (datetime.now(timezone.utc) + timedelta(minutes=150)).isoformat(),
+            "current_lat": 48.8566 + _random.uniform(-0.05, 0.05),
+            "current_lng": 2.3522 + _random.uniform(-0.05, 0.05)
+        },
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -1111,6 +1128,169 @@ async def get_faq(category: Optional[str] = None):
         return [f for f in FAQ_DATA if f["category"] == category]
     return FAQ_DATA
 
+# ==================== REFERRAL SYSTEM ====================
+
+@api_router.get("/referral")
+async def get_referral_info(user: dict = Depends(get_current_user)):
+    user_doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    referral_code = user_doc.get("referral_code")
+    if not referral_code:
+        referral_code = f"KOYA-{user['user_id'][-6:].upper()}"
+        await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"referral_code": referral_code}})
+    
+    referrals_count = await db.referrals.count_documents({"referrer_id": user["user_id"]})
+    return {
+        "referral_code": referral_code,
+        "referrals_count": referrals_count,
+        "points_per_referral": 10
+    }
+
+@api_router.post("/referral/apply")
+async def apply_referral(data: ReferralApply, user: dict = Depends(get_current_user)):
+    code = data.referral_code.upper().strip()
+    
+    referrer = await db.users.find_one({"referral_code": code}, {"_id": 0})
+    if not referrer:
+        raise HTTPException(status_code=400, detail="Code de parrainage invalide")
+    if referrer["user_id"] == user["user_id"]:
+        raise HTTPException(status_code=400, detail="Vous ne pouvez pas utiliser votre propre code")
+    
+    existing = await db.referrals.find_one({"referred_id": user["user_id"]}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Vous avez déjà utilisé un code de parrainage")
+    
+    await db.referrals.insert_one({
+        "referrer_id": referrer["user_id"],
+        "referred_id": user["user_id"],
+        "code": code,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    await db.users.update_one({"user_id": referrer["user_id"]}, {"$inc": {"loyalty_points": 10}})
+    await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"loyalty_points": 10}})
+    
+    return {"message": "Code de parrainage appliqué ! Vous et votre ami avez reçu 10 points de fidélité."}
+
+# ==================== JOBS ====================
+
+JOBS_DATA = [
+    {
+        "id": "livreur", "title": "Livreur / Livreuse", "location": "Paris & IDF", "type": "CDI / Temps partiel",
+        "salary": "1 800€ - 2 200€ brut/mois", "department": "Logistique",
+        "description": "Rejoignez notre équipe de livraison et participez à la satisfaction de nos clients en livrant des produits afro-caribéens de qualité à domicile.",
+        "missions": ["Assurer les livraisons dans les délais impartis (3h max)", "Garantir la qualité des produits pendant le transport", "Offrir un service client irréprochable à chaque livraison", "Gérer les retours et réclamations sur le terrain", "Entretenir le véhicule de livraison"],
+        "requirements": ["Permis B obligatoire", "Connaissance de Paris et de l'Île-de-France", "Ponctualité et sens du service", "Bonne condition physique", "Smartphone requis pour l'application de livraison"],
+        "benefits": ["Primes sur objectifs", "Véhicule fourni", "Mutuelle d'entreprise", "Tickets restaurant", "Réductions sur les produits KÔYA"]
+    },
+    {
+        "id": "preparateur", "title": "Préparateur / Préparatrice de commandes", "location": "Paris", "type": "CDI",
+        "salary": "1 900€ - 2 300€ brut/mois", "department": "Entrepôt",
+        "description": "Vous serez en charge de préparer les commandes clients avec soin, en respectant les normes de qualité et les délais de traitement.",
+        "missions": ["Préparer les commandes clients avec précision", "Vérifier la qualité et la conformité des produits", "Gérer les stocks et signaler les ruptures", "Organiser l'espace de stockage", "Respecter les normes d'hygiène alimentaire"],
+        "requirements": ["Expérience en logistique souhaitée", "Rigueur et sens de l'organisation", "Capacité à travailler en équipe", "Bonne condition physique (port de charges)", "Connaissance des produits alimentaires appréciée"],
+        "benefits": ["CDI dès l'embauche", "Horaires fixes", "Mutuelle d'entreprise", "Tickets restaurant", "Ambiance multiculturelle"]
+    },
+    {
+        "id": "marketing", "title": "Chargé(e) Marketing Digital", "location": "Paris", "type": "CDI",
+        "salary": "2 800€ - 3 500€ brut/mois", "department": "Marketing",
+        "description": "Vous piloterez la stratégie digitale de KÔYA Market pour accroître la notoriété et développer l'acquisition client.",
+        "missions": ["Concevoir et piloter les campagnes marketing digitales", "Gérer les réseaux sociaux (Instagram, TikTok, Facebook)", "Analyser les KPIs et optimiser les performances", "Créer du contenu engageant (visuels, vidéos, rédactionnel)", "Collaborer avec les influenceurs et partenaires"],
+        "requirements": ["Bac+3/5 en Marketing Digital", "3+ ans d'expérience en marketing digital", "Maîtrise des outils analytics (GA4, Meta Business)", "Créativité et sensibilité culturelle", "Connaissance de la culture afro-caribéenne appréciée"],
+        "benefits": ["Télétravail 2j/semaine", "Macbook Pro fourni", "Budget formation", "Tickets restaurant", "Ambiance startup dynamique"]
+    },
+    {
+        "id": "dev", "title": "Développeur / Développeuse Full Stack", "location": "Remote", "type": "CDI",
+        "salary": "3 500€ - 5 000€ brut/mois", "department": "Tech",
+        "description": "Vous contribuerez au développement de la plateforme e-commerce KÔYA Market et de son application mobile.",
+        "missions": ["Développer de nouvelles fonctionnalités (React, Python/FastAPI)", "Optimiser les performances de la plateforme", "Participer aux code reviews et à l'architecture", "Maintenir et améliorer l'infrastructure cloud", "Collaborer avec l'équipe produit"],
+        "requirements": ["3+ ans d'expérience en développement web", "Maîtrise de React et Python", "Expérience avec MongoDB et les APIs REST", "Connaissances en DevOps appréciées", "Esprit d'équipe et autonomie"],
+        "benefits": ["100% Remote", "Macbook Pro fourni", "Budget formation annuel", "Stock-options", "Semaine de 4 jours possible"]
+    },
+    {
+        "id": "sav", "title": "Conseiller / Conseillère Service Client", "location": "Paris", "type": "CDI / CDD",
+        "salary": "2 000€ - 2 400€ brut/mois", "department": "Service Client",
+        "description": "Vous serez le premier point de contact de nos clients et garantirez leur satisfaction à chaque interaction.",
+        "missions": ["Répondre aux demandes clients par chat, email et téléphone", "Traiter les réclamations et trouver des solutions", "Suivre les commandes et résoudre les problèmes de livraison", "Alimenter la FAQ et les guides d'aide", "Remonter les feedbacks clients à l'équipe produit"],
+        "requirements": ["Expérience en relation client", "Excellente communication écrite et orale", "Empathie et patience", "Maîtrise des outils CRM", "Langues : Français courant, Anglais apprécié"],
+        "benefits": ["Formation complète", "Horaires flexibles", "Mutuelle d'entreprise", "Tickets restaurant", "Évolution possible vers Team Lead"]
+    }
+]
+
+@api_router.get("/jobs")
+async def get_jobs():
+    return JOBS_DATA
+
+@api_router.get("/jobs/{job_id}")
+async def get_job(job_id: str):
+    job = next((j for j in JOBS_DATA if j["id"] == job_id), None)
+    if not job:
+        raise HTTPException(status_code=404, detail="Poste non trouvé")
+    return job
+
+# ==================== ORDER TRACKING ====================
+
+@api_router.get("/orders/{order_id}/tracking")
+async def get_order_tracking(order_id: str, user: dict = Depends(get_current_user)):
+    order = await db.orders.find_one({"order_id": order_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    
+    # Simulate tracking progress based on time elapsed
+    import random as _rand
+    created_at = datetime.fromisoformat(order["created_at"]) if isinstance(order["created_at"], str) else order["created_at"]
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    elapsed = (datetime.now(timezone.utc) - created_at).total_seconds() / 60
+    
+    tracking = order.get("tracking", {})
+    steps = tracking.get("steps", [])
+    
+    # Simulate progression
+    if elapsed >= 5:
+        for s in steps:
+            if s["status"] == "preparing":
+                s["done"] = True
+    if elapsed >= 15:
+        for s in steps:
+            if s["status"] == "delivering":
+                s["done"] = True
+        current_status = "delivering"
+    if elapsed >= 30:
+        for s in steps:
+            s["done"] = True
+        current_status = "delivered"
+    
+    if elapsed < 5:
+        current_status = "pending"
+    elif elapsed < 15:
+        current_status = "preparing"
+    elif elapsed < 30:
+        current_status = "delivering"
+    else:
+        current_status = "delivered"
+    
+    # Update order status in DB
+    await db.orders.update_one({"order_id": order_id}, {"$set": {"status": current_status, "tracking.steps": steps}})
+    
+    # Simulate driver position moving toward delivery address
+    dest_lat = 48.8566 + _rand.uniform(-0.02, 0.02)
+    dest_lng = 2.3522 + _rand.uniform(-0.02, 0.02)
+    
+    eta_minutes = max(0, int(30 - elapsed)) if elapsed < 30 else 0
+    
+    return {
+        "order_id": order_id,
+        "status": current_status,
+        "driver_name": order.get("driver_name", "Mamadou D."),
+        "driver_phone": order.get("driver_phone", "06 12 34 56 78"),
+        "steps": steps,
+        "estimated_arrival": f"{eta_minutes} min" if eta_minutes > 0 else "Livrée",
+        "driver_lat": dest_lat,
+        "driver_lng": dest_lng,
+        "delivery_slot": order.get("delivery_slot"),
+        "delivery_date": order.get("delivery_date")
+    }
+
 # ==================== HEALTH CHECK ====================
 
 @api_router.get("/")
@@ -1155,6 +1335,8 @@ async def seed_data():
             {"category_id": "cat_legumes", "name": "Légumes", "slug": "legumes", "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400", "product_count": 0},
             {"category_id": "cat_riz", "name": "Riz", "slug": "riz", "image_url": "https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?w=400", "product_count": 0},
             {"category_id": "cat_sauces", "name": "Sauces", "slug": "sauces", "image_url": "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=400", "product_count": 0},
+            {"category_id": "cat_epicerie_afr", "name": "Épicerie Africaine", "slug": "epicerie-africaine", "image_url": "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=400", "product_count": 0},
+            {"category_id": "cat_epicerie_car", "name": "Épicerie Caribéenne", "slug": "epicerie-caribeenne", "image_url": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400", "product_count": 0},
         ]
         await db.categories.insert_many(categories)
         logger.info("Categories seeded")
@@ -1331,5 +1513,24 @@ async def seed_data():
         ]
         await db.recipes.insert_many(recipes)
         logger.info("Recipes seeded")
+    
+    # Seed reviews
+    if await db.reviews.count_documents({}) == 0:
+        review_data = [
+            {"review_id": "rev_001", "product_id": "prod_001", "user_id": "seed", "user_name": "Aminata D.", "rating": 5, "comment": "Plantains parfaits, bien mûrs comme je les aime. Idéals pour l'alloco !", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_002", "product_id": "prod_001", "user_id": "seed", "user_name": "Jean-Claude M.", "rating": 4, "comment": "Bonne qualité, livrés en bon état. Je recommande.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_003", "product_id": "prod_003", "user_id": "seed", "user_name": "Fatou S.", "rating": 5, "comment": "Le meilleur riz basmati que j'ai trouvé. Parfumé et léger.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_004", "product_id": "prod_005", "user_id": "seed", "user_name": "Pierre L.", "rating": 5, "comment": "Tilapia très frais, livré sous glace. Parfait pour le thiéb !", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_005", "product_id": "prod_006", "user_id": "seed", "user_name": "Marie K.", "rating": 5, "comment": "Excellent poulet fermier, tendre et goûteux. Ma famille adore.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_006", "product_id": "prod_006", "user_id": "seed", "user_name": "Ousmane B.", "rating": 4, "comment": "Très bon poulet, bien charnu. Le yassa était délicieux.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_007", "product_id": "prod_008", "user_id": "seed", "user_name": "Aïcha T.", "rating": 5, "comment": "Bissap de qualité premium. Le jus est rouge foncé comme il faut.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_008", "product_id": "prod_009", "user_id": "seed", "user_name": "Léa N.", "rating": 5, "comment": "Le beurre de karité est incroyable, pur et naturel. Mes cheveux adorent.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_009", "product_id": "prod_011", "user_id": "seed", "user_name": "Kofi A.", "rating": 5, "comment": "Mangues parfaites, sucrées et juteuses. Comme au pays !", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_010", "product_id": "prod_011", "user_id": "seed", "user_name": "Sandra P.", "rating": 4, "comment": "Très bonnes mangues, mûres juste comme il faut.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_011", "product_id": "prod_003", "user_id": "seed", "user_name": "Ibrahim D.", "rating": 5, "comment": "Excellent rapport qualité prix pour ce riz basmati.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_012", "product_id": "prod_005", "user_id": "seed", "user_name": "Binta S.", "rating": 4, "comment": "Poisson bien frais, emballage soigné. Bonne expérience.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+        ]
+        await db.reviews.insert_many(review_data)
+        logger.info("Reviews seeded")
     
     logger.info("Database seeding completed")

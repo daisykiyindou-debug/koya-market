@@ -1,6 +1,7 @@
-import React from 'react';
-import { Plus, Star, MapPin } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Minus, Star, MapPin, ShoppingCart } from 'lucide-react';
 import { Button } from './ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
@@ -10,10 +11,10 @@ const ProductCard = ({ product, onClick }) => {
   const { addToCart } = useCart();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const [quantity, setQuantity] = useState(1);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
-  const handleAddToCart = async (e) => {
-    e.stopPropagation();
-    
+  const handleAddToCart = async () => {
     if (!isAuthenticated) {
       toast.error('Connexion requise', { description: 'Connectez-vous pour ajouter des produits au panier.' });
       navigate('/connexion');
@@ -21,8 +22,10 @@ const ProductCard = ({ product, onClick }) => {
     }
 
     try {
-      await addToCart(product.product_id, 1);
-      toast.success('Produit ajouté !', { description: `${product.name} a été ajouté au panier.` });
+      await addToCart(product.product_id, quantity);
+      toast.success('Produit ajouté !', { description: `${quantity}x ${product.name} ajouté au panier.` });
+      setPopoverOpen(false);
+      setQuantity(1);
     } catch (error) {
       toast.error('Erreur', { description: 'Impossible d\'ajouter le produit au panier.' });
     }
@@ -43,15 +46,49 @@ const ProductCard = ({ product, onClick }) => {
           loading="lazy"
         />
         
-        {/* Quick Add Button */}
-        <Button
-          onClick={handleAddToCart}
-          size="icon"
-          className="add-to-cart-btn bg-secondary hover:bg-secondary/90 rounded-full shadow-lg"
-          data-testid={`add-to-cart-${product.product_id}`}
-        >
-          <Plus className="w-5 h-5" />
-        </Button>
+        {/* Quick Add Button with quantity selector */}
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              onClick={(e) => { e.stopPropagation(); setPopoverOpen(true); }}
+              size="icon"
+              className="add-to-cart-btn bg-secondary hover:bg-secondary/90 rounded-full shadow-lg"
+              data-testid={`add-to-cart-${product.product_id}`}
+            >
+              <Plus className="w-5 h-5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-48 p-3" side="top" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-medium mb-2 text-center">Quantité</p>
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={(e) => { e.stopPropagation(); setQuantity(Math.max(1, quantity - 1)); }}
+              >
+                <Minus className="w-4 h-4" />
+              </Button>
+              <span className="font-semibold text-lg w-8 text-center">{quantity}</span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={(e) => { e.stopPropagation(); setQuantity(quantity + 1); }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            <Button
+              className="w-full btn-primary text-sm"
+              onClick={(e) => { e.stopPropagation(); handleAddToCart(); }}
+              data-testid={`confirm-add-${product.product_id}`}
+            >
+              <ShoppingCart className="w-4 h-4 mr-1" />
+              Ajouter ({(product.price * quantity).toFixed(2)}€)
+            </Button>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Content */}
