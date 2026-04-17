@@ -483,6 +483,13 @@ const CataloguePage = () => {
                           </div>
                         </div>
                         <p className="text-sm text-muted-foreground">{review.comment}</p>
+                        {review.image_urls?.length > 0 && (
+                          <div className="flex gap-2 mt-3">
+                            {review.image_urls.map((url, idx) => (
+                              <img key={idx} src={url} alt="Photo avis" className="w-20 h-20 rounded-lg object-cover border" />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

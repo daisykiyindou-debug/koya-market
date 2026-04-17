@@ -188,6 +188,7 @@ class ReviewCreate(BaseModel):
     rating: int
     comment: str
     image_urls: List[str] = []
+    order_id: Optional[str] = None
 
 class ReviewResponse(BaseModel):
     review_id: str
@@ -1016,6 +1017,23 @@ async def get_product_reviews(product_id: str, limit: int = 10):
             r["created_at"] = datetime.fromisoformat(r["created_at"])
     return reviews
 
+@api_router.get("/reviews/order/{order_id}")
+async def get_order_reviews(order_id: str, user: dict = Depends(get_current_user)):
+    """Get all reviews submitted by the user for a specific order"""
+    product_reviews = await db.reviews.find(
+        {"order_id": order_id, "user_id": user["user_id"]},
+        {"_id": 0}
+    ).to_list(100)
+    driver_review = await db.driver_reviews.find_one(
+        {"order_id": order_id, "user_id": user["user_id"]},
+        {"_id": 0}
+    )
+    return {
+        "product_reviews": product_reviews,
+        "driver_review": driver_review,
+        "has_reviews": len(product_reviews) > 0 or driver_review is not None
+    }
+
 @api_router.post("/reviews")
 async def create_review(review: ReviewCreate, user: dict = Depends(get_current_user)):
     # Check minimum comment length
@@ -1039,6 +1057,7 @@ async def create_review(review: ReviewCreate, user: dict = Depends(get_current_u
         "rating": review.rating,
         "comment": review.comment,
         "image_urls": review.image_urls,
+        "order_id": review.order_id,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.reviews.insert_one(review_doc)

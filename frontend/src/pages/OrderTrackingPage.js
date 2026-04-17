@@ -25,10 +25,12 @@ const OrderTrackingPage = () => {
   const [driverReview, setDriverReview] = useState({ rating: 5, comment: '' });
   const [submittingReviews, setSubmittingReviews] = useState(false);
   const [reviewsSubmitted, setReviewsSubmitted] = useState(false);
+  const [existingReviews, setExistingReviews] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/connexion'); return; }
     fetchData();
+    fetchExistingReviews();
     const interval = setInterval(fetchTracking, 15000);
     return () => clearInterval(interval);
   }, [orderId, isAuthenticated]);
@@ -72,6 +74,16 @@ const OrderTrackingPage = () => {
     try {
       const res = await axios.get(`${API}/orders/${orderId}/tracking`, { headers: { Authorization: `Bearer ${token}` } });
       setTracking(res.data);
+    } catch (e) { /* silent */ }
+  };
+
+  const fetchExistingReviews = async () => {
+    try {
+      const res = await axios.get(`${API}/reviews/order/${orderId}`, { headers: { Authorization: `Bearer ${token}` } });
+      setExistingReviews(res.data);
+      if (res.data.has_reviews) {
+        setReviewsSubmitted(true);
+      }
     } catch (e) { /* silent */ }
   };
 
@@ -129,7 +141,7 @@ const OrderTrackingPage = () => {
         if (review.rating > 0 && review.comment.trim().length >= 20) {
           try {
             const res = await axios.post(`${API}/reviews`, {
-              product_id: productId, rating: review.rating, comment: review.comment, image_urls: review.image_urls || []
+              product_id: productId, rating: review.rating, comment: review.comment, image_urls: review.image_urls || [], order_id: orderId
             }, { headers: { Authorization: `Bearer ${token}` } });
             totalPoints += res.data.points_earned || 0;
           } catch (e) {
@@ -150,6 +162,7 @@ const OrderTrackingPage = () => {
       toast.success(`Merci pour vos avis !`, { description: `Vous avez gagné ${totalPoints} points de fidélité.` });
       setReviewMode(false);
       setReviewsSubmitted(true);
+      fetchExistingReviews();
     } catch (error) {
       toast.error('Erreur lors de l\'envoi des avis');
     } finally {
@@ -279,10 +292,40 @@ const OrderTrackingPage = () => {
             )}
 
             {isDelivered && !isCancelled && reviewsSubmitted && (
-              <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
-                <CheckCircle className="w-10 h-10 mx-auto text-green-600 mb-3" />
-                <h3 className="font-heading text-lg font-semibold mb-2 text-green-800">Avis envoyés</h3>
-                <p className="text-sm text-green-700">Merci pour vos avis ! Vos points fidélité ont été crédités.</p>
+              <div className="bg-white rounded-2xl p-6 border">
+                <div className="flex items-center gap-3 mb-4">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                  <h3 className="font-heading text-lg font-semibold text-green-800">Vos avis ont été enregistrés</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">Merci ! Vos points fidélité ont été crédités. Les avis ne peuvent pas être modifiés.</p>
+                
+                {existingReviews?.product_reviews?.length > 0 && (
+                  <div className="space-y-3">
+                    {existingReviews.product_reviews.map((r, i) => (
+                      <div key={i} className="bg-muted/30 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-medium text-sm">{order.items.find(it => it.product_id === r.product_id)?.name || r.product_id}</span>
+                          <div className="flex gap-0.5">{[...Array(5)].map((_, j) => <Star key={j} className={`w-4 h-4 ${j < r.rating ? 'fill-secondary text-secondary' : 'text-muted'}`} />)}</div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{r.comment}</p>
+                        {r.image_urls?.length > 0 && (
+                          <div className="flex gap-2 mt-2">
+                            {r.image_urls.map((url, k) => <img key={k} src={url} alt="" className="w-16 h-16 rounded-lg object-cover" />)}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {existingReviews?.driver_review && (
+                  <div className="bg-muted/30 rounded-xl p-4 mt-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-sm">Livreur : {existingReviews.driver_review.driver_name}</span>
+                      <div className="flex gap-0.5">{[...Array(5)].map((_, j) => <Star key={j} className={`w-4 h-4 ${j < existingReviews.driver_review.rating ? 'fill-secondary text-secondary' : 'text-muted'}`} />)}</div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{existingReviews.driver_review.comment}</p>
+                  </div>
+                )}
               </div>
             )}
 

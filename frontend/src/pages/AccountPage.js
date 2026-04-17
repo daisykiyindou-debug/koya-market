@@ -440,24 +440,18 @@ const AccountPage = () => {
                   {loyalty.points >= 100 && (
                     <div className="mb-4">
                       <label className="form-label">Points à utiliser</label>
-                      <div className="flex items-center gap-4">
-                        <input
-                          type="range"
-                          min={100}
-                          max={Math.floor(loyalty.points / 100) * 100}
-                          step={100}
-                          value={loyaltyPointsToUse}
-                          onChange={(e) => setLoyaltyPointsToUse(parseInt(e.target.value))}
-                          className="flex-1"
-                          data-testid="loyalty-points-slider"
-                        />
-                        <span className="font-heading text-lg font-semibold text-primary w-24 text-right">
-                          {loyaltyPointsToUse} pts
-                        </span>
-                      </div>
-                      <p className="text-sm text-secondary font-medium mt-2">
-                        = {((loyaltyPointsToUse / 100) * 5).toFixed(0)}€ de réduction
-                      </p>
+                      <select
+                        value={loyaltyPointsToUse}
+                        onChange={(e) => setLoyaltyPointsToUse(parseInt(e.target.value))}
+                        className="form-input"
+                        data-testid="loyalty-points-select"
+                      >
+                        {Array.from({ length: Math.floor(loyalty.points / 100) }, (_, i) => (i + 1) * 100).map(pts => (
+                          <option key={pts} value={pts}>
+                            {pts} points = {((pts / 100) * 5).toFixed(0)}€ de réduction
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   )}
 
