@@ -134,6 +134,10 @@ const CareersPage = () => {
                   <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Nom complet *" className="form-input text-sm" required data-testid="job-apply-name" />
                   <input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Email *" className="form-input text-sm" required data-testid="job-apply-email" />
                   <input type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Téléphone *" className="form-input text-sm" required />
+                  <div>
+                    <label className="form-label text-sm">CV (PDF)</label>
+                    <input type="file" accept=".pdf,.doc,.docx" className="form-input text-sm file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-sm file:bg-primary/10 file:text-primary" data-testid="job-cv-upload" />
+                  </div>
                   <textarea value={formData.message} onChange={(e) => setFormData({...formData, message: e.target.value})} placeholder="Motivation..." className="form-input text-sm min-h-[80px]" />
                   <Button type="submit" className="w-full btn-primary" disabled={submitting} data-testid="job-apply-btn">
                     {submitting ? 'Envoi...' : 'Envoyer ma candidature'}
@@ -161,56 +165,32 @@ const CareersPage = () => {
       </div>
 
       <div className="container-custom py-12">
-        <div className="grid lg:grid-cols-2 gap-12">
-          {/* Job Listings */}
-          <div>
-            <h2 className="font-heading text-2xl font-semibold mb-6">Nos offres d'emploi</h2>
-            <div className="space-y-4">
-              {jobs.map((position) => (
-                <div
-                  key={position.id}
-                  className="bg-white rounded-2xl p-6 border border-border hover:border-primary/50 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/carrieres/${position.id}`)}
-                  data-testid={`job-${position.id}`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">{position.department}</span>
-                      <h3 className="font-heading text-lg font-semibold mt-2 mb-1">{position.title}</h3>
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{position.location}</span>
-                        <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{position.type}</span>
-                        <span className="flex items-center gap-1"><Banknote className="w-4 h-4" />{position.salary}</span>
-                      </div>
-                    </div>
-                    <Briefcase className="w-10 h-10 text-primary/20 shrink-0" />
+        {/* Job Listings - Full Width */}
+        <h2 className="font-heading text-2xl font-semibold mb-6">Nos offres d'emploi</h2>
+        <div className="grid md:grid-cols-2 gap-6">
+          {jobs.map((position) => (
+            <div
+              key={position.id}
+              className="bg-white rounded-2xl p-6 border border-border hover:border-primary/50 transition-colors cursor-pointer"
+              onClick={() => navigate(`/carrieres/${position.id}`)}
+              data-testid={`job-${position.id}`}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">{position.department}</span>
+                  <h3 className="font-heading text-lg font-semibold mt-2 mb-1">{position.title}</h3>
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{position.location}</span>
+                    <span className="flex items-center gap-1"><Clock className="w-4 h-4" />{position.type}</span>
+                    <span className="flex items-center gap-1"><Banknote className="w-4 h-4" />{position.salary}</span>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-3 line-clamp-2">{position.description}</p>
                 </div>
-              ))}
+                <Briefcase className="w-10 h-10 text-primary/20 shrink-0" />
+              </div>
+              <p className="text-sm text-muted-foreground mt-3 line-clamp-2">{position.description}</p>
+              <Button variant="outline" size="sm" className="mt-4">Voir l'offre</Button>
             </div>
-          </div>
-
-          {/* Application Form */}
-          <div className="bg-white rounded-2xl p-6 md:p-8 h-fit">
-            <h2 className="font-heading text-2xl font-semibold mb-6">Candidature spontanée</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} placeholder="Nom complet *" className="form-input" required data-testid="career-name-input" />
-              <input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Email *" className="form-input" required data-testid="career-email-input" />
-              <input type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Téléphone *" className="form-input" required />
-              <Select value={formData.position} onValueChange={(v) => setFormData({...formData, position: v})}>
-                <SelectTrigger><SelectValue placeholder="Poste souhaité" /></SelectTrigger>
-                <SelectContent>
-                  {jobs.map(j => <SelectItem key={j.id} value={j.id}>{j.title}</SelectItem>)}
-                  <SelectItem value="other">Candidature spontanée</SelectItem>
-                </SelectContent>
-              </Select>
-              <textarea value={formData.message} onChange={(e) => setFormData({...formData, message: e.target.value})} rows={4} className="form-input" placeholder="Motivation..." />
-              <Button type="submit" className="w-full btn-primary py-6" disabled={submitting} data-testid="career-submit-btn">
-                {submitting ? 'Envoi...' : 'Envoyer ma candidature'} <Send className="w-5 h-5 ml-2" />
-              </Button>
-            </form>
-          </div>
+          ))}
         </div>
       </div>
     </div>

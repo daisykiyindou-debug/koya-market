@@ -20,6 +20,8 @@ import LegalPage from './pages/LegalPage';
 import DeliveryZonePage from './pages/DeliveryZonePage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
 
+import ScrollToTop from './components/ScrollToTop';
+
 import './App.css';
 
 // Protected Route Component
@@ -148,6 +150,7 @@ const AppRouter = () => {
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthProvider>
         <CartProvider>
           <AppRouter />

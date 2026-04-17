@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Clock, CheckCircle, Package, Truck, MapPin } from 'lucide-react';
+import { ArrowLeft, Phone, MessageCircle, Clock, CheckCircle, Package, Truck, MapPin, Star, Camera, Send, X, Gift } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Progress } from '../components/ui/progress';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -15,6 +18,12 @@ const OrderTrackingPage = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [mapInitialized, setMapInitialized] = useState(false);
+  const [driverInfoOpen, setDriverInfoOpen] = useState(false);
+  const [driverInfo, setDriverInfo] = useState(null);
+  const [reviewMode, setReviewMode] = useState(false);
+  const [productReviews, setProductReviews] = useState({});
+  const [driverReview, setDriverReview] = useState({ rating: 5, comment: '' });
+  const [submittingReviews, setSubmittingReviews] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/connexion'); return; }
@@ -29,11 +38,9 @@ const OrderTrackingPage = () => {
       link.rel = 'stylesheet';
       link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
       document.head.appendChild(link);
-
       const timer = setTimeout(() => {
-        if (typeof window.L !== 'undefined') {
-          initMap();
-        } else {
+        if (typeof window.L !== 'undefined') initMap();
+        else {
           const script = document.createElement('script');
           script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
           script.onload = () => initMap();
@@ -64,13 +71,22 @@ const OrderTrackingPage = () => {
     try {
       const res = await axios.get(`${API}/orders/${orderId}/tracking`, { headers: { Authorization: `Bearer ${token}` } });
       setTracking(res.data);
-    } catch (error) { /* silent */ }
+    } catch (e) { /* silent */ }
+  };
+
+  const fetchDriverInfo = async (driverName) => {
+    try {
+      const res = await axios.get(`${API}/driver/${encodeURIComponent(driverName)}/info`);
+      setDriverInfo(res.data);
+      setDriverInfoOpen(true);
+    } catch (e) {
+      toast.error('Erreur lors du chargement des infos livreur');
+    }
   };
 
   const initMap = () => {
     const L = window.L;
     if (!L || !tracking) return;
-
     const mapEl = document.getElementById('tracking-map');
     if (!mapEl || mapEl._leaflet_id) return;
 
@@ -78,47 +94,63 @@ const OrderTrackingPage = () => {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
     const driverIcon = L.divIcon({
-      className: 'driver-marker',
-      html: '<div style="width:40px;height:40px;background:#EA580C;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:20px;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);">🚗</div>',
-      iconSize: [40, 40],
-      iconAnchor: [20, 20]
+      className: '',
+      html: '<div style="width:44px;height:44px;background:#EA580C;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-size:22px;border:3px solid white;box-shadow:0 2px 10px rgba(0,0,0,0.3);">🚗</div>',
+      iconSize: [44, 44], iconAnchor: [22, 22]
     });
-
-    L.marker([tracking.driver_lat, tracking.driver_lng], { icon: driverIcon })
-      .addTo(map)
-      .bindPopup(`<strong>${tracking.driver_name}</strong><br/>Votre livreur`);
-
+    L.marker([tracking.driver_lat, tracking.driver_lng], { icon: driverIcon }).addTo(map).bindPopup(`<strong>${tracking.driver_name}</strong>`);
     setMapInitialized(true);
   };
 
-  const getStepIcon = (status) => {
-    switch (status) {
-      case 'pending': return <CheckCircle className="w-5 h-5" />;
-      case 'preparing': return <Package className="w-5 h-5" />;
-      case 'delivering': return <Truck className="w-5 h-5" />;
-      case 'delivered': return <CheckCircle className="w-5 h-5" />;
-      default: return <Clock className="w-5 h-5" />;
+  const getProgressPercent = () => {
+    if (!tracking) return 0;
+    const done = tracking.steps.filter(s => s.done).length;
+    return (done / tracking.steps.length) * 100;
+  };
+
+  const handleSubmitReviews = async () => {
+    setSubmittingReviews(true);
+    let totalPoints = 0;
+    try {
+      // Submit product reviews
+      for (const [productId, review] of Object.entries(productReviews)) {
+        if (review.rating > 0) {
+          const res = await axios.post(`${API}/reviews`, {
+            product_id: productId, rating: review.rating, comment: review.comment || '', image_urls: []
+          }, { headers: { Authorization: `Bearer ${token}` } });
+          totalPoints += res.data.points_earned || 0;
+        }
+      }
+      // Submit driver review
+      if (driverReview.rating > 0) {
+        const res = await axios.post(`${API}/reviews/driver`, {
+          order_id: orderId, rating: driverReview.rating, comment: driverReview.comment
+        }, { headers: { Authorization: `Bearer ${token}` } });
+        totalPoints += res.data.points_earned || 0;
+      }
+      toast.success(`Merci pour vos avis !`, { description: `Vous avez gagné ${totalPoints} points de fidélité.` });
+      setReviewMode(false);
+    } catch (error) {
+      toast.error('Erreur lors de l\'envoi des avis');
+    } finally {
+      setSubmittingReviews(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const StarRating = ({ value, onChange }) => (
+    <div className="flex gap-1">
+      {[1,2,3,4,5].map(i => (
+        <button key={i} onClick={() => onChange(i)} className="focus:outline-none">
+          <Star className={`w-6 h-6 transition-colors ${i <= value ? 'fill-secondary text-secondary' : 'text-muted'}`} />
+        </button>
+      ))}
+    </div>
+  );
 
-  if (!tracking || !order) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">Commande non trouvée</p>
-          <Button onClick={() => navigate('/compte/commandes')}>Retour aux commandes</Button>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+  if (!tracking || !order) return <div className="min-h-screen flex items-center justify-center"><div className="text-center"><p className="text-muted-foreground mb-4">Commande non trouvée</p><Button onClick={() => navigate('/compte/commandes')}>Retour</Button></div></div>;
+
+  const isDelivered = tracking.status === 'delivered';
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -140,63 +172,160 @@ const OrderTrackingPage = () => {
           </span>
         </div>
 
+        {/* Progress Bar */}
+        <div className="bg-white rounded-2xl p-6 border mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Progression</span>
+            <span className="text-sm text-primary font-medium">{isDelivered ? 'Livrée' : tracking.estimated_arrival}</span>
+          </div>
+          <Progress value={getProgressPercent()} className="h-3 mb-3" />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            {tracking.steps.map((step, i) => (
+              <span key={i} className={step.done ? 'text-primary font-medium' : ''}>{step.label}</span>
+            ))}
+          </div>
+        </div>
+
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Map + Driver */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Map */}
-            <div id="tracking-map" className="w-full h-[400px] rounded-2xl overflow-hidden border shadow-lg" data-testid="tracking-map" />
+            {!isDelivered && <div id="tracking-map" className="w-full h-[350px] rounded-2xl overflow-hidden border shadow-lg" data-testid="tracking-map" />}
 
-            {/* Driver Info */}
-            <div className="bg-white rounded-2xl p-6 border flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center text-2xl">
-                  🚗
-                </div>
-                <div>
-                  <p className="font-semibold" data-testid="driver-name">{tracking.driver_name}</p>
-                  <p className="text-sm text-muted-foreground">Votre livreur</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Arrivée estimée</p>
-                <p className="font-heading text-xl font-semibold text-primary" data-testid="eta">
-                  {tracking.estimated_arrival}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline + Details */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Timeline */}
+            {/* Driver Card */}
             <div className="bg-white rounded-2xl p-6 border">
-              <h3 className="font-heading text-lg font-semibold mb-4">Progression</h3>
-              <div className="space-y-0">
-                {tracking.steps.map((step, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        step.done ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {getStepIcon(step.status)}
-                      </div>
-                      {index < tracking.steps.length - 1 && (
-                        <div className={`w-0.5 h-10 ${step.done ? 'bg-primary' : 'bg-muted'}`} />
-                      )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <button onClick={() => fetchDriverInfo(tracking.driver_name)} className="relative" data-testid="driver-photo-btn">
+                    <img src={`https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100`} alt={tracking.driver_name} className="w-14 h-14 rounded-full object-cover border-2 border-primary cursor-pointer hover:opacity-80 transition-opacity" />
+                  </button>
+                  <div>
+                    <p className="font-semibold" data-testid="driver-name">{tracking.driver_name}</p>
+                    <p className="text-sm text-muted-foreground">Votre livreur</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a href={`tel:${tracking.driver_phone}`} className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors" data-testid="call-driver-btn">
+                    <Phone className="w-5 h-5 text-primary" />
+                  </a>
+                  <a href={`sms:${tracking.driver_phone}`} className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center hover:bg-secondary/20 transition-colors" data-testid="message-driver-btn">
+                    <MessageCircle className="w-5 h-5 text-secondary" />
+                  </a>
+                </div>
+              </div>
+              {!isDelivered && (
+                <div className="mt-4 pt-4 border-t text-center">
+                  <p className="text-sm text-muted-foreground">Arrivée estimée</p>
+                  <p className="font-heading text-2xl font-semibold text-primary" data-testid="eta">{tracking.estimated_arrival}</p>
+                </div>
+              )}
+              {isDelivered && (
+                <div className="mt-4 pt-4 border-t text-center">
+                  <p className="text-sm text-primary font-medium">Commande livrée avec succès</p>
+                </div>
+              )}
+            </div>
+
+            {/* Post-delivery: Review Section */}
+            {isDelivered && !reviewMode && (
+              <div className="bg-gradient-to-r from-secondary/10 to-primary/10 rounded-2xl p-6 border text-center">
+                <Gift className="w-10 h-10 mx-auto text-secondary mb-3" />
+                <h3 className="font-heading text-lg font-semibold mb-2">Donnez votre avis</h3>
+                <p className="text-sm text-muted-foreground mb-4">Notez vos produits et votre livreur pour gagner <strong>5 points par avis</strong></p>
+                <Button className="btn-primary" onClick={() => setReviewMode(true)} data-testid="start-review-btn">
+                  Donner mon avis
+                </Button>
+              </div>
+            )}
+
+            {isDelivered && reviewMode && (
+              <div className="bg-white rounded-2xl p-6 border space-y-6">
+                <h3 className="font-heading text-lg font-semibold">Notez votre commande</h3>
+
+                {/* Product Reviews */}
+                {order.items.map((item) => (
+                  <div key={item.product_id} className="border-b pb-4 last:border-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="font-medium">{item.name}</span>
+                      <span className="text-xs bg-muted px-2 py-1 rounded-full">+5 pts</span>
                     </div>
-                    <div className="pt-2">
-                      <p className={`font-medium ${step.done ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        {step.label}
-                      </p>
-                    </div>
+                    <StarRating
+                      value={productReviews[item.product_id]?.rating || 0}
+                      onChange={(r) => setProductReviews(prev => ({...prev, [item.product_id]: {...(prev[item.product_id] || {}), rating: r}}))}
+                    />
+                    <textarea
+                      value={productReviews[item.product_id]?.comment || ''}
+                      onChange={(e) => setProductReviews(prev => ({...prev, [item.product_id]: {...(prev[item.product_id] || {}), comment: e.target.value}}))}
+                      placeholder="Votre avis sur ce produit..."
+                      className="form-input mt-2 text-sm min-h-[60px]"
+                    />
                   </div>
                 ))}
+
+                {/* Driver Review */}
+                <div className="pt-4 border-t">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="font-medium">Note du livreur : {tracking.driver_name}</span>
+                    <span className="text-xs bg-muted px-2 py-1 rounded-full">+5 pts</span>
+                  </div>
+                  <StarRating value={driverReview.rating} onChange={(r) => setDriverReview(prev => ({...prev, rating: r}))} />
+                  <textarea
+                    value={driverReview.comment}
+                    onChange={(e) => setDriverReview(prev => ({...prev, comment: e.target.value}))}
+                    placeholder="Votre avis sur le livreur..."
+                    className="form-input mt-2 text-sm min-h-[60px]"
+                    data-testid="driver-review-input"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <Button variant="outline" onClick={() => setReviewMode(false)}>Annuler</Button>
+                  <Button className="flex-1 btn-primary" onClick={handleSubmitReviews} disabled={submittingReviews} data-testid="submit-reviews-btn">
+                    {submittingReviews ? 'Envoi...' : 'Envoyer mes avis'}
+                    <Send className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar: Order Summary */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Order Items Recap */}
+            <div className="bg-white rounded-2xl p-6 border">
+              <h3 className="font-heading text-lg font-semibold mb-4">Votre commande</h3>
+              <div className="space-y-3">
+                {order.items.map((item) => (
+                  <div key={item.product_id} className="flex justify-between text-sm">
+                    <span>{item.quantity}x {item.name}</span>
+                    <span className="font-medium">{(item.price * item.quantity).toFixed(2)}€</span>
+                  </div>
+                ))}
+                <div className="border-t pt-3 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Sous-total</span>
+                    <span>{order.subtotal.toFixed(2)}€</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Livraison</span>
+                    <span>{order.delivery_fee === 0 ? 'Gratuit' : `${order.delivery_fee.toFixed(2)}€`}</span>
+                  </div>
+                  {order.loyalty_discount > 0 && (
+                    <div className="flex justify-between text-sm text-secondary">
+                      <span>Réduction fidélité</span>
+                      <span>-{order.loyalty_discount.toFixed(2)}€</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-semibold pt-1 border-t">
+                    <span>Total</span>
+                    <span className="text-primary">{order.total.toFixed(2)}€</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Order Summary */}
+            {/* Delivery Details */}
             <div className="bg-white rounded-2xl p-6 border">
-              <h3 className="font-heading text-lg font-semibold mb-4">Détails</h3>
+              <h3 className="font-heading text-lg font-semibold mb-4">Livraison</h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Date</span>
@@ -206,40 +335,63 @@ const OrderTrackingPage = () => {
                   <span className="text-muted-foreground">Créneau</span>
                   <span>{order.delivery_slot}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Articles</span>
-                  <span>{order.items.length} produit(s)</span>
-                </div>
-                <div className="flex justify-between font-semibold border-t pt-2">
-                  <span>Total</span>
-                  <span className="text-primary">{order.total.toFixed(2)}€</span>
-                </div>
-              </div>
-
-              {/* Address */}
-              {order.address && (
-                <div className="mt-4 pt-4 border-t">
-                  <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                    <div className="text-sm text-muted-foreground">
-                      <p>{order.address.street}</p>
-                      <p>{order.address.postal_code} {order.address.city}</p>
+                {order.address && (
+                  <div className="pt-3 border-t">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
+                      <div className="text-muted-foreground">
+                        <p>{order.address.street}</p>
+                        <p>{order.address.postal_code} {order.address.city}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* Contact Driver */}
-              <div className="mt-4 pt-4 border-t">
-                <a href={`tel:${tracking.driver_phone}`} className="flex items-center gap-2 text-primary hover:underline">
-                  <Phone className="w-4 h-4" />
-                  <span className="text-sm">{tracking.driver_phone}</span>
-                </a>
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Driver Info Dialog */}
+      <Dialog open={driverInfoOpen} onOpenChange={setDriverInfoOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Infos livreur</DialogTitle>
+          </DialogHeader>
+          {driverInfo && (
+            <div className="text-center">
+              <img src={driverInfo.photo} alt={driverInfo.name} className="w-24 h-24 rounded-full mx-auto object-cover border-4 border-primary mb-4" />
+              <h2 className="font-heading text-xl font-semibold">{driverInfo.name}</h2>
+              <div className="flex items-center justify-center gap-2 mt-2 mb-4">
+                <Star className="w-5 h-5 fill-secondary text-secondary" />
+                <span className="font-semibold">{driverInfo.rating}</span>
+                <span className="text-muted-foreground">({driverInfo.total_reviews} avis)</span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-6">{driverInfo.total_deliveries} livraisons effectuées</p>
+
+              {driverInfo.recent_reviews.length > 0 && (
+                <div className="text-left">
+                  <h3 className="font-medium text-sm mb-3">Derniers avis</h3>
+                  <div className="space-y-3 max-h-48 overflow-y-auto">
+                    {driverInfo.recent_reviews.map((r, i) => (
+                      <div key={i} className="bg-muted/50 rounded-xl p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium">{r.user_name}</span>
+                          <div className="flex gap-0.5">{[...Array(r.rating)].map((_,j) => <Star key={j} className="w-3 h-3 fill-secondary text-secondary" />)}</div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{r.comment}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {driverInfo.recent_reviews.length === 0 && (
+                <p className="text-sm text-muted-foreground">Aucun avis pour le moment.</p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

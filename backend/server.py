@@ -1004,7 +1004,71 @@ async def create_review(review: ReviewCreate, user: dict = Depends(get_current_u
             {"$set": {"rating": round(result[0]["avg_rating"], 1), "reviews_count": result[0]["count"]}}
         )
     
-    return review_doc
+    # Award 5 loyalty points for review
+    await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"loyalty_points": 5}})
+    
+    # Exclude MongoDB _id from response
+    response_doc = {k: v for k, v in review_doc.items() if k != "_id"}
+    return {**response_doc, "points_earned": 5}
+
+class DriverReviewCreate(BaseModel):
+    order_id: str
+    rating: int
+    comment: str
+
+@api_router.post("/reviews/driver")
+async def review_driver(review: DriverReviewCreate, user: dict = Depends(get_current_user)):
+    order = await db.orders.find_one({"order_id": review.order_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Commande non trouvée")
+    
+    review_id = f"drev_{uuid.uuid4().hex[:8]}"
+    review_doc = {
+        "review_id": review_id,
+        "order_id": review.order_id,
+        "driver_name": order.get("driver_name"),
+        "user_id": user["user_id"],
+        "user_name": user["name"],
+        "rating": review.rating,
+        "comment": review.comment,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.driver_reviews.insert_one(review_doc)
+    
+    # Award 5 loyalty points
+    await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"loyalty_points": 5}})
+    
+    # Exclude MongoDB _id from response
+    response_doc = {k: v for k, v in review_doc.items() if k != "_id"}
+    return {**response_doc, "points_earned": 5}
+
+@api_router.get("/driver/{driver_name}/info")
+async def get_driver_info(driver_name: str):
+    reviews = await db.driver_reviews.find({"driver_name": driver_name}, {"_id": 0}).sort("created_at", -1).limit(5).to_list(5)
+    total_reviews = await db.driver_reviews.count_documents({"driver_name": driver_name})
+    
+    avg_rating = 4.8
+    if reviews:
+        avg_rating = round(sum(r["rating"] for r in reviews) / len(reviews), 1)
+    
+    # Simulated driver profile
+    driver_photos = {
+        "Mamadou D.": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200",
+        "Ibrahim K.": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
+        "Fatou S.": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
+        "Abdoulaye M.": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200",
+        "Aïssatou B.": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200",
+        "Moussa T.": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200",
+    }
+    
+    return {
+        "name": driver_name,
+        "photo": driver_photos.get(driver_name, "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200"),
+        "rating": avg_rating,
+        "total_reviews": total_reviews,
+        "total_deliveries": total_reviews + 127,
+        "recent_reviews": reviews
+    }
 
 # ==================== CONTACT & NEWSLETTER ====================
 
@@ -1326,6 +1390,8 @@ async def seed_data():
     # Seed categories
     if await db.categories.count_documents({}) == 0:
         categories = [
+            {"category_id": "cat_epicerie_afr", "name": "Épicerie Africaine", "slug": "epicerie-africaine", "image_url": "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=400", "product_count": 0},
+            {"category_id": "cat_epicerie_car", "name": "Épicerie Caribéenne", "slug": "epicerie-caribeenne", "image_url": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400", "product_count": 0},
             {"category_id": "cat_viande", "name": "Viande", "slug": "viande", "image_url": "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400", "product_count": 0},
             {"category_id": "cat_poisson", "name": "Poisson", "slug": "poisson", "image_url": "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400", "product_count": 0},
             {"category_id": "cat_boissons", "name": "Boissons", "slug": "boissons", "image_url": "https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=400", "product_count": 0},
@@ -1335,8 +1401,6 @@ async def seed_data():
             {"category_id": "cat_legumes", "name": "Légumes", "slug": "legumes", "image_url": "https://images.unsplash.com/photo-1540420773420-3366772f4999?w=400", "product_count": 0},
             {"category_id": "cat_riz", "name": "Riz", "slug": "riz", "image_url": "https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?w=400", "product_count": 0},
             {"category_id": "cat_sauces", "name": "Sauces", "slug": "sauces", "image_url": "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=400", "product_count": 0},
-            {"category_id": "cat_epicerie_afr", "name": "Épicerie Africaine", "slug": "epicerie-africaine", "image_url": "https://images.unsplash.com/photo-1604329760661-e71dc83f8f26?w=400", "product_count": 0},
-            {"category_id": "cat_epicerie_car", "name": "Épicerie Caribéenne", "slug": "epicerie-caribeenne", "image_url": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400", "product_count": 0},
         ]
         await db.categories.insert_many(categories)
         logger.info("Categories seeded")
@@ -1360,6 +1424,12 @@ async def seed_data():
             {"product_id": "prod_014", "name": "Cube Maggi", "description": "Cubes de bouillon pour assaisonner vos plats.", "price": 2.99, "category": "sauces", "origin_country": "Nigeria", "image_url": "https://images.unsplash.com/photo-1472476443507-c7a5948772fc?w=400", "stock": 200, "unit": "boîte", "rating": 4.5, "reviews_count": 112, "created_at": datetime.now(timezone.utc).isoformat()},
             {"product_id": "prod_015", "name": "Jus de Gingembre", "description": "Boisson au gingembre frais, énergisante et épicée.", "price": 4.99, "category": "boissons", "origin_country": "Sénégal", "image_url": "https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=400", "stock": 85, "unit": "bouteille", "rating": 4.6, "reviews_count": 39, "created_at": datetime.now(timezone.utc).isoformat()},
             {"product_id": "prod_016", "name": "Viande de Boeuf", "description": "Viande de boeuf fraîche de qualité supérieure.", "price": 18.99, "category": "viande", "origin_country": "France", "image_url": "https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?w=400", "stock": 35, "unit": "kg", "rating": 4.8, "reviews_count": 64, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"product_id": "prod_017", "name": "Manioc (Kwanga)", "description": "Manioc frais traditionnel, base de nombreux plats africains.", "price": 4.99, "category": "epicerie-africaine", "origin_country": "Congo", "image_url": "https://images.unsplash.com/photo-1590165482129-1b8b27698780?w=400", "stock": 60, "unit": "kg", "rating": 4.7, "reviews_count": 38, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"product_id": "prod_018", "name": "Foufou / Farine de Manioc", "description": "Farine de manioc premium pour préparer le foufou traditionnel.", "price": 6.49, "category": "epicerie-africaine", "origin_country": "Cameroun", "image_url": "https://images.unsplash.com/photo-1536304993881-ff6e9eefa2a6?w=400", "stock": 80, "unit": "sachet", "rating": 4.6, "reviews_count": 42, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"product_id": "prod_019", "name": "Semoule de Maïs", "description": "Semoule de maïs fine pour accompagnements et bouillies.", "price": 3.99, "category": "epicerie-africaine", "origin_country": "Côte d'Ivoire", "image_url": "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400", "stock": 90, "unit": "sachet", "rating": 4.5, "reviews_count": 29, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"product_id": "prod_020", "name": "Chips de Plantain", "description": "Chips de plantain croustillantes, snack savoureux des Caraïbes.", "price": 3.49, "category": "epicerie-caribeenne", "origin_country": "Antilles", "image_url": "https://images.unsplash.com/photo-1603052875302-d376b7c0638a?w=400", "stock": 100, "unit": "sachet", "rating": 4.8, "reviews_count": 55, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"product_id": "prod_021", "name": "Bonbons Tropicaux", "description": "Assortiment de bonbons aux saveurs tropicales : mangue, coco, goyave.", "price": 4.99, "category": "epicerie-caribeenne", "origin_country": "Antilles", "image_url": "https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=400", "stock": 75, "unit": "sachet", "rating": 4.4, "reviews_count": 33, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"product_id": "prod_022", "name": "Sucre de Canne", "description": "Sucre de canne pur non raffiné, au goût authentique des Antilles.", "price": 5.49, "category": "epicerie-caribeenne", "origin_country": "Antilles", "image_url": "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400", "stock": 65, "unit": "kg", "rating": 4.6, "reviews_count": 27, "created_at": datetime.now(timezone.utc).isoformat()},
         ]
         await db.products.insert_many(products)
         logger.info("Products seeded")
@@ -1518,17 +1588,27 @@ async def seed_data():
     if await db.reviews.count_documents({}) == 0:
         review_data = [
             {"review_id": "rev_001", "product_id": "prod_001", "user_id": "seed", "user_name": "Aminata D.", "rating": 5, "comment": "Plantains parfaits, bien mûrs comme je les aime. Idéals pour l'alloco !", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
-            {"review_id": "rev_002", "product_id": "prod_001", "user_id": "seed", "user_name": "Jean-Claude M.", "rating": 4, "comment": "Bonne qualité, livrés en bon état. Je recommande.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_002", "product_id": "prod_002", "user_id": "seed", "user_name": "Jean-Claude M.", "rating": 4, "comment": "Ignames de très bonne qualité, parfaites pour le foufou.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
             {"review_id": "rev_003", "product_id": "prod_003", "user_id": "seed", "user_name": "Fatou S.", "rating": 5, "comment": "Le meilleur riz basmati que j'ai trouvé. Parfumé et léger.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
-            {"review_id": "rev_004", "product_id": "prod_005", "user_id": "seed", "user_name": "Pierre L.", "rating": 5, "comment": "Tilapia très frais, livré sous glace. Parfait pour le thiéb !", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
-            {"review_id": "rev_005", "product_id": "prod_006", "user_id": "seed", "user_name": "Marie K.", "rating": 5, "comment": "Excellent poulet fermier, tendre et goûteux. Ma famille adore.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
-            {"review_id": "rev_006", "product_id": "prod_006", "user_id": "seed", "user_name": "Ousmane B.", "rating": 4, "comment": "Très bon poulet, bien charnu. Le yassa était délicieux.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
-            {"review_id": "rev_007", "product_id": "prod_008", "user_id": "seed", "user_name": "Aïcha T.", "rating": 5, "comment": "Bissap de qualité premium. Le jus est rouge foncé comme il faut.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
-            {"review_id": "rev_008", "product_id": "prod_009", "user_id": "seed", "user_name": "Léa N.", "rating": 5, "comment": "Le beurre de karité est incroyable, pur et naturel. Mes cheveux adorent.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
-            {"review_id": "rev_009", "product_id": "prod_011", "user_id": "seed", "user_name": "Kofi A.", "rating": 5, "comment": "Mangues parfaites, sucrées et juteuses. Comme au pays !", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
-            {"review_id": "rev_010", "product_id": "prod_011", "user_id": "seed", "user_name": "Sandra P.", "rating": 4, "comment": "Très bonnes mangues, mûres juste comme il faut.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
-            {"review_id": "rev_011", "product_id": "prod_003", "user_id": "seed", "user_name": "Ibrahim D.", "rating": 5, "comment": "Excellent rapport qualité prix pour ce riz basmati.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
-            {"review_id": "rev_012", "product_id": "prod_005", "user_id": "seed", "user_name": "Binta S.", "rating": 4, "comment": "Poisson bien frais, emballage soigné. Bonne expérience.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_004", "product_id": "prod_004", "user_id": "seed", "user_name": "Pierre L.", "rating": 5, "comment": "Huile de palme authentique, couleur et saveur parfaites.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_005", "product_id": "prod_005", "user_id": "seed", "user_name": "Binta S.", "rating": 5, "comment": "Tilapia très frais, livré sous glace. Parfait pour le thiéb !", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_006", "product_id": "prod_006", "user_id": "seed", "user_name": "Marie K.", "rating": 5, "comment": "Excellent poulet fermier, tendre et goûteux. Ma famille adore.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_007", "product_id": "prod_007", "user_id": "seed", "user_name": "Ousmane B.", "rating": 4, "comment": "Gingembre très frais et parfumé. Idéal pour le jus.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_008", "product_id": "prod_008", "user_id": "seed", "user_name": "Aïcha T.", "rating": 5, "comment": "Bissap de qualité premium. Le jus est rouge foncé comme il faut.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_009", "product_id": "prod_009", "user_id": "seed", "user_name": "Léa N.", "rating": 5, "comment": "Le beurre de karité est incroyable, pur et naturel.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_010", "product_id": "prod_010", "user_id": "seed", "user_name": "Sandra P.", "rating": 4, "comment": "Piments bien forts comme il faut ! Attention aux doigts.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_011", "product_id": "prod_011", "user_id": "seed", "user_name": "Kofi A.", "rating": 5, "comment": "Mangues parfaites, sucrées et juteuses. Comme au pays !", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_012", "product_id": "prod_012", "user_id": "seed", "user_name": "Ibrahim D.", "rating": 5, "comment": "Attiéké de qualité, grain parfait. Comme à Abidjan.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_013", "product_id": "prod_013", "user_id": "seed", "user_name": "Nana A.", "rating": 4, "comment": "Très beau pagne wax, motifs authentiques et couleurs vives.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_014", "product_id": "prod_014", "user_id": "seed", "user_name": "Cécile D.", "rating": 5, "comment": "Indispensable en cuisine africaine, goût authentique.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_015", "product_id": "prod_015", "user_id": "seed", "user_name": "Moussa T.", "rating": 4, "comment": "Jus de gingembre bien épicé et rafraîchissant.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_016", "product_id": "prod_016", "user_id": "seed", "user_name": "Paul M.", "rating": 5, "comment": "Viande de très bonne qualité, tendre et savoureuse.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_017", "product_id": "prod_017", "user_id": "seed", "user_name": "Grace N.", "rating": 5, "comment": "Kwanga authentique, texture et goût parfaits.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_018", "product_id": "prod_018", "user_id": "seed", "user_name": "David K.", "rating": 4, "comment": "Farine de manioc de qualité, le foufou était réussi.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_019", "product_id": "prod_019", "user_id": "seed", "user_name": "Adama C.", "rating": 5, "comment": "Semoule fine et sans grumeaux. Parfaite pour le tô.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_020", "product_id": "prod_020", "user_id": "seed", "user_name": "Caroline R.", "rating": 5, "comment": "Chips de plantain croustillantes et délicieuses !", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_021", "product_id": "prod_021", "user_id": "seed", "user_name": "Thierry J.", "rating": 4, "comment": "Bonbons savoureux, les enfants adorent le goût coco.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
+            {"review_id": "rev_022", "product_id": "prod_022", "user_id": "seed", "user_name": "Estelle M.", "rating": 5, "comment": "Sucre de canne authentique, goût incomparable.", "image_urls": [], "created_at": datetime.now(timezone.utc).isoformat()},
         ]
         await db.reviews.insert_many(review_data)
         logger.info("Reviews seeded")

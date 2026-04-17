@@ -386,7 +386,13 @@ const CataloguePage = () => {
                       <Star className="w-5 h-5 fill-secondary text-secondary" />
                       <span className="font-medium">{selectedProduct.rating}</span>
                     </div>
-                    <span className="text-muted-foreground">({selectedProduct.reviews_count} avis)</span>
+                    <button 
+                      onClick={() => document.getElementById('product-reviews-section')?.scrollIntoView({ behavior: 'smooth' })}
+                      className="text-primary hover:underline cursor-pointer"
+                      data-testid="reviews-count-link"
+                    >
+                      ({selectedProduct.reviews_count} avis)
+                    </button>
                   </div>
 
                   <p className="text-muted-foreground mb-6">{selectedProduct.description}</p>
@@ -435,11 +441,13 @@ const CataloguePage = () => {
               </div>
 
               {/* Reviews */}
-              {productReviews.length > 0 && (
-                <div className="mt-8 pt-8 border-t">
-                  <h3 className="font-heading text-xl font-semibold mb-4">Avis clients</h3>
+              <div id="product-reviews-section" className="mt-8 pt-8 border-t">
+                <h3 className="font-heading text-xl font-semibold mb-4">
+                  Avis clients ({productReviews.length})
+                </h3>
+                {productReviews.length > 0 ? (
                   <div className="space-y-4">
-                    {productReviews.slice(0, 3).map((review) => (
+                    {productReviews.map((review) => (
                       <div key={review.review_id} className="bg-muted/50 p-4 rounded-xl">
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-medium">{review.user_name}</span>
@@ -456,8 +464,10 @@ const CataloguePage = () => {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-sm text-muted-foreground">Aucun avis pour ce produit.</p>
+                )}
+              </div>
 
               {/* Related Recipes */}
               {relatedRecipes.length > 0 && (
