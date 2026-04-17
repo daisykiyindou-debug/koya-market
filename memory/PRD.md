@@ -1,34 +1,42 @@
 # KÔYA Market - PRD
 
-## Problem Statement
-Premium e-commerce site for KÔYA Market, an Afro-Caribbean grocery delivery platform in Paris & IDF.
-
 ## Architecture
-- Frontend: React + Tailwind + Shadcn UI + Leaflet (maps)
+- Frontend: React + Tailwind + Shadcn UI + Leaflet
 - Backend: FastAPI + MongoDB (Motor)
 - Auth: JWT + Emergent Google OAuth
 - Payment: MOCKED
 
-## What's Been Implemented
+## Implemented Features (April 2026)
 
-### Round 1 (April 2026)
-- Full backend API, frontend pages (Home, Catalogue, Recipes, About, Contact, Cart, Checkout, Account, Careers, Legal)
-- Auth JWT + Google OAuth, delivery zone checker by postal code
-- Promo code system, loyalty code generation, FAQ chatbot, newsletter
+### Core E-commerce
+- 22 products across 11 categories (Épicerie Africaine/Caribéenne first)
+- Product detail with reviews, quantity selector
+- Cart with 50€ minimum, promo codes, loyalty codes
+- Multi-step checkout with delivery slots
+- Order tracking with driver info, map, progress bar, call/message
 
-### Round 2 (April 2026)
-- Page Zones de livraison with interactive Leaflet map
-- Referral system (invite a friend, +10 points each)
-- Careers page with full job detail (missions, salary, requirements, benefits)
-- Order tracking page with simulated map, driver, ETA
-- New categories: Épicerie Africaine, Épicerie Caribéenne
-- Product quantity selector popover
-- Loyalty points info banner in cart
-- Seeded reviews for products
+### User Features
+- JWT + Google OAuth authentication
+- Loyalty program (1€=1pt, 100pts=5€ code)
+- Referral system (+10pts each)
+- Post-delivery reviews (+5pts per review)
+- Address management
+
+### Pages
+- Home, Catalogue, Recipes, About, Contact, Cart, Checkout, Account
+- Zones de livraison (Leaflet map), Careers (job details + CV upload)
+- Order tracking, Legal pages
+
+### Round 3 Additions
+- ScrollToTop on navigation
+- New products (Manioc, Foufou, Semoule, Chips plantain, Bonbons, Sucre canne)
+- Categories reordered (Épicerie Africaine/Caribéenne first)
+- Enhanced order tracking (driver photo, progress bar, call/message, post-delivery reviews)
+- Careers: no spontaneous form, CV upload, click on job for full details
+- Product reviews visible and clickable in catalogue
 
 ## Backlog
-- P0: Real Stripe payment integration
-- P1: Email notifications (order confirmation, delivery updates)
-- P2: Admin dashboard for managing products/orders
-- P2: Image upload for reviews/contact
-- P3: Real mobile app, push notifications
+- P0: Real Stripe payment
+- P1: Email notifications
+- P2: Admin dashboard
+- P3: Real mobile app
