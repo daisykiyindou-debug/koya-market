@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, Package, Gift, MapPin, Lock, LogOut, ChevronRight, Clock, Truck, CheckCircle, Copy, Check, Users, Share2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../components/ui/dialog';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { toast } from 'sonner';
@@ -24,6 +25,11 @@ const AccountPage = () => {
   const [generatedCodes, setGeneratedCodes] = useState([]);
   const [generatingCode, setGeneratingCode] = useState(false);
   const [copiedCode, setCopiedCode] = useState(null);
+  const [ordersPage, setOrdersPage] = useState(1);
+  const [ordersTotalPages, setOrdersTotalPages] = useState(1);
+  const [cancelConfirm, setCancelConfirm] = useState(null);
+  const [loyaltyPointsToUse, setLoyaltyPointsToUse] = useState(100);
+  const [editingAddress, setEditingAddress] = useState(null);
 
   const [profileForm, setProfileForm] = useState({ name: '', phone: '' });
   const [passwordForm, setPasswordForm] = useState({ current_password: '', new_password: '', confirm_password: '' });
@@ -59,8 +65,9 @@ const AccountPage = () => {
     setLoading(true);
     try {
       if (activeTab === 'commandes' || activeTab === 'profile') {
-        const ordersRes = await axios.get(`${API}/orders`, { headers: { Authorization: `Bearer ${token}` }});
-        setOrders(ordersRes.data);
+        const ordersRes = await axios.get(`${API}/orders?page=${ordersPage}&per_page=5`, { headers: { Authorization: `Bearer ${token}` }});
+        setOrders(ordersRes.data.orders || ordersRes.data);
+        setOrdersTotalPages(ordersRes.data.total_pages || 1);
       }
       if (activeTab === 'fidelite' || activeTab === 'profile') {
         const loyaltyRes = await axios.get(`${API}/loyalty`, { headers: { Authorization: `Bearer ${token}` }});
@@ -263,6 +270,7 @@ const AccountPage = () => {
 
             {/* Orders Tab */}
             {activeTab === 'commandes' && (
+              <>
               <div className="bg-white rounded-2xl p-6" data-testid="orders-tab">
                 <h2 className="font-heading text-xl font-semibold mb-4">Mes commandes</h2>
                 
@@ -299,7 +307,7 @@ const AccountPage = () => {
                             <p className="text-sm text-muted-foreground">
                               {order.items.length} article(s)
                             </p>
-                            {order.driver_name && (
+                            {(order.status === 'delivering') && order.driver_name && (
                               <p className="text-sm text-muted-foreground">
                                 Livreur : {order.driver_name}
                               </p>
@@ -312,20 +320,14 @@ const AccountPage = () => {
                                 variant="outline" 
                                 size="sm"
                                 className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    const res = await axios.post(`${API}/orders/${order.order_id}/cancel`, {}, { headers: { Authorization: `Bearer ${token}` }});
-                                    toast.success('Commande annulée', { description: res.data.message });
-                                    fetchData();
-                                  } catch (err) {
-                                    toast.error('Erreur', { description: err.response?.data?.detail || 'Impossible d\'annuler.' });
-                                  }
-                                }}
+                                onClick={(e) => { e.stopPropagation(); setCancelConfirm(order); }}
                                 data-testid={`cancel-order-${order.order_id}`}
                               >
                                 Annuler
                               </Button>
+                            )}
+                            {order.status === 'cancelled' && (
+                              <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">Annulée</span>
                             )}
                             <Button 
                               variant="outline" 
@@ -341,7 +343,59 @@ const AccountPage = () => {
                     ))}
                   </div>
                 )}
+
+                {/* Pagination */}
+                {ordersTotalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 mt-6">
+                    <Button variant="outline" size="sm" disabled={ordersPage <= 1} onClick={() => { setOrdersPage(p => p - 1); }}>
+                      Précédent
+                    </Button>
+                    <span className="text-sm text-muted-foreground">Page {ordersPage} / {ordersTotalPages}</span>
+                    <Button variant="outline" size="sm" disabled={ordersPage >= ordersTotalPages} onClick={() => { setOrdersPage(p => p + 1); }}>
+                      Suivant
+                    </Button>
+                  </div>
+                )}
               </div>
+
+              {/* Cancel Confirmation Dialog */}
+              {cancelConfirm && (
+                <Dialog open={!!cancelConfirm} onOpenChange={() => setCancelConfirm(null)}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Annuler la commande ?</DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <p className="mb-4">Êtes-vous sûr de vouloir annuler la commande <strong>{cancelConfirm?.order_id}</strong> ?</p>
+                      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                        <p className="text-sm text-amber-800 font-medium">Conditions de remboursement</p>
+                        <p className="text-sm text-amber-700 mt-1">Le remboursement de <strong>{cancelConfirm?.total?.toFixed(2)}€</strong> sera effectué sous 10 jours ouvrés sur votre carte de paiement.</p>
+                      </div>
+                    </div>
+                    <DialogFooter className="flex gap-3">
+                      <Button variant="outline" onClick={() => setCancelConfirm(null)}>Non, garder ma commande</Button>
+                      <Button 
+                        variant="destructive"
+                        onClick={async () => {
+                          try {
+                            const res = await axios.post(`${API}/orders/${cancelConfirm.order_id}/cancel`, {}, { headers: { Authorization: `Bearer ${token}` }});
+                            toast.success('Commande annulée', { description: res.data.message });
+                            setCancelConfirm(null);
+                            fetchData();
+                          } catch (err) {
+                            toast.error('Erreur', { description: err.response?.data?.detail || 'Impossible d\'annuler.' });
+                            setCancelConfirm(null);
+                          }
+                        }}
+                        data-testid="confirm-cancel-btn"
+                      >
+                        Oui, annuler
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </>
             )}
 
             {/* Loyalty Tab */}
@@ -380,8 +434,32 @@ const AccountPage = () => {
                 <div className="bg-white rounded-2xl p-6">
                   <h3 className="font-heading text-lg font-semibold mb-4">Générer un code de réduction</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Convertissez 100 points en un code de 5€ de réduction à utiliser dans votre panier.
+                    Choisissez le nombre de points à convertir. Chaque tranche de 100 points = 5€ de réduction.
                   </p>
+
+                  {loyalty.points >= 100 && (
+                    <div className="mb-4">
+                      <label className="form-label">Points à utiliser</label>
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="range"
+                          min={100}
+                          max={Math.floor(loyalty.points / 100) * 100}
+                          step={100}
+                          value={loyaltyPointsToUse}
+                          onChange={(e) => setLoyaltyPointsToUse(parseInt(e.target.value))}
+                          className="flex-1"
+                          data-testid="loyalty-points-slider"
+                        />
+                        <span className="font-heading text-lg font-semibold text-primary w-24 text-right">
+                          {loyaltyPointsToUse} pts
+                        </span>
+                      </div>
+                      <p className="text-sm text-secondary font-medium mt-2">
+                        = {((loyaltyPointsToUse / 100) * 5).toFixed(0)}€ de réduction
+                      </p>
+                    </div>
+                  )}
 
                   <Button
                     className="btn-secondary w-full py-5"
@@ -389,14 +467,14 @@ const AccountPage = () => {
                     onClick={async () => {
                       setGeneratingCode(true);
                       try {
-                        const response = await axios.post(`${API}/loyalty/generate-code`, {}, {
+                        const response = await axios.post(`${API}/loyalty/generate-code`, { points_to_use: loyaltyPointsToUse }, {
                           headers: { Authorization: `Bearer ${token}` }
                         });
                         setGeneratedCodes(prev => [response.data, ...prev]);
                         toast.success('Code généré !', { description: response.data.message });
-                        // Refresh loyalty data
                         const loyaltyRes = await axios.get(`${API}/loyalty`, { headers: { Authorization: `Bearer ${token}` }});
                         setLoyalty(loyaltyRes.data);
+                        setLoyaltyPointsToUse(100);
                       } catch (error) {
                         const message = error.response?.data?.detail || 'Impossible de générer le code.';
                         toast.error('Erreur', { description: message });
@@ -411,7 +489,7 @@ const AccountPage = () => {
                       ? `Il vous manque ${100 - loyalty.points} points`
                       : generatingCode
                         ? 'Génération...'
-                        : 'Générer un code -5€ (100 points)'
+                        : `Générer un code de ${((loyaltyPointsToUse / 100) * 5).toFixed(0)}€ (${loyaltyPointsToUse} points)`
                     }
                   </Button>
 

@@ -9,18 +9,21 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { format, addDays, isBefore, startOfDay } from 'date-fns';
+import { format, addDays, isBefore, startOfDay, isToday, getHours } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const DELIVERY_SLOTS = [
-  { value: '9h-12h', label: '9h - 12h' },
-  { value: '11h-14h', label: '11h - 14h' },
-  { value: '14h-17h', label: '14h - 17h' },
-  { value: '17h-20h', label: '17h - 20h' },
-  { value: '20h-23h', label: '20h - 23h' },
+const ALL_DELIVERY_SLOTS = [
+  { value: '9h-12h', label: '9h - 12h', startHour: 9 },
+  { value: '11h-14h', label: '11h - 14h', startHour: 11 },
+  { value: '14h-17h', label: '14h - 17h', startHour: 14 },
+  { value: '17h-20h', label: '17h - 20h', startHour: 17 },
+  { value: '20h-23h', label: '20h - 23h', startHour: 20 },
 ];
+
+// Some weekend slots are "full"
+const FULL_SLOTS_WEEKENDS = ['11h-14h', '14h-17h'];
 
 const CheckoutPage = () => {
   const navigate = useNavigate();
@@ -366,18 +369,40 @@ const CheckoutPage = () => {
                   </div>
                   <div>
                     <label className="form-label">Créneau horaire</label>
-                    <Select value={deliverySlot} onValueChange={setDeliverySlot}>
-                      <SelectTrigger data-testid="delivery-slot-select">
-                        <SelectValue placeholder="Choisir un créneau" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DELIVERY_SLOTS.map((slot) => (
-                          <SelectItem key={slot.value} value={slot.value}>
-                            {slot.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      {ALL_DELIVERY_SLOTS.map((slot) => {
+                        const selectedIsToday = deliveryDate && isToday(deliveryDate);
+                        const currentHour = getHours(new Date());
+                        const isPast = selectedIsToday && slot.startHour <= currentHour;
+                        const isWeekend = deliveryDate && (deliveryDate.getDay() === 0 || deliveryDate.getDay() === 6);
+                        const isFull = isWeekend && FULL_SLOTS_WEEKENDS.includes(slot.value);
+                        const isDisabled = isPast || isFull;
+
+                        return (
+                          <button
+                            key={slot.value}
+                            type="button"
+                            onClick={() => !isDisabled && setDeliverySlot(slot.value)}
+                            disabled={isDisabled}
+                            className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-colors ${
+                              deliverySlot === slot.value
+                                ? 'border-primary bg-primary/5 text-primary font-medium'
+                                : isDisabled
+                                  ? 'border-border bg-muted/50 text-muted-foreground cursor-not-allowed opacity-50'
+                                  : 'border-border hover:border-primary/50'
+                            }`}
+                            data-testid={`slot-${slot.value}`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span>{slot.label}</span>
+                              {isPast && <span className="text-xs text-muted-foreground">Passé</span>}
+                              {isFull && !isPast && <span className="text-xs text-red-500">Complet</span>}
+                              {deliverySlot === slot.value && <Check className="w-4 h-4 text-primary" />}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
 
                     <div className="mt-6">
                       <label className="form-label">Instructions de livraison (optionnel)</label>

@@ -118,10 +118,6 @@ const Footer = () => {
                 <Phone className="w-5 h-5 text-secondary" />
                 <span>01 23 45 67 89</span>
               </div>
-              <div className="flex items-center gap-3 text-white/70">
-                <Mail className="w-5 h-5 text-secondary" />
-                <span>contact@koyamarket.com</span>
-              </div>
             </div>
           </div>
 

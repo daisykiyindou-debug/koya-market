@@ -171,6 +171,8 @@ const OrderTrackingPage = () => {
   if (!tracking || !order) return <div className="min-h-screen flex items-center justify-center"><div className="text-center"><p className="text-muted-foreground mb-4">Commande non trouvée</p><Button onClick={() => navigate('/compte/commandes')}>Retour</Button></div></div>;
 
   const isDelivered = tracking.status === 'delivered';
+  const isCancelled = tracking.status === 'cancelled';
+  const showDriver = tracking.status === 'delivering' || tracking.status === 'delivered';
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -189,6 +191,7 @@ const OrderTrackingPage = () => {
             {tracking.status === 'preparing' && 'En préparation'}
             {tracking.status === 'delivering' && 'En livraison'}
             {tracking.status === 'delivered' && 'Livrée'}
+            {tracking.status === 'cancelled' && 'Annulée'}
           </span>
         </div>
 
@@ -209,9 +212,22 @@ const OrderTrackingPage = () => {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Map + Driver */}
           <div className="lg:col-span-2 space-y-6">
-            {!isDelivered && <div id="tracking-map" className="w-full h-[350px] rounded-2xl overflow-hidden border shadow-lg" data-testid="tracking-map" />}
+            {!isDelivered && !isCancelled && showDriver && <div id="tracking-map" className="w-full h-[350px] rounded-2xl overflow-hidden border shadow-lg" data-testid="tracking-map" />}
 
-            {/* Driver Card */}
+            {/* Cancelled State */}
+            {isCancelled && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
+                <X className="w-12 h-12 mx-auto text-red-500 mb-4" />
+                <h3 className="font-heading text-xl font-semibold text-red-800 mb-2">Commande annulée</h3>
+                {order.cancelled_at && (
+                  <p className="text-sm text-red-700 mb-2">Annulée le {new Date(order.cancelled_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                )}
+                <p className="text-sm text-red-600">Le remboursement de <strong>{order.total.toFixed(2)}€</strong> sera effectué sous 10 jours sur votre carte de paiement.</p>
+              </div>
+            )}
+
+            {/* Driver Card - only when delivering or delivered */}
+            {showDriver && (
             <div className="bg-white rounded-2xl p-6 border">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -248,9 +264,10 @@ const OrderTrackingPage = () => {
                 </div>
               )}
             </div>
+            )}
 
             {/* Post-delivery: Review Section */}
-            {isDelivered && !reviewMode && !reviewsSubmitted && (
+            {isDelivered && !isCancelled && !reviewMode && !reviewsSubmitted && (
               <div className="bg-gradient-to-r from-secondary/10 to-primary/10 rounded-2xl p-6 border text-center">
                 <Gift className="w-10 h-10 mx-auto text-secondary mb-3" />
                 <h3 className="font-heading text-lg font-semibold mb-2">Donnez votre avis</h3>
@@ -261,7 +278,7 @@ const OrderTrackingPage = () => {
               </div>
             )}
 
-            {isDelivered && reviewsSubmitted && (
+            {isDelivered && !isCancelled && reviewsSubmitted && (
               <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
                 <CheckCircle className="w-10 h-10 mx-auto text-green-600 mb-3" />
                 <h3 className="font-heading text-lg font-semibold mb-2 text-green-800">Avis envoyés</h3>
@@ -269,7 +286,7 @@ const OrderTrackingPage = () => {
               </div>
             )}
 
-            {isDelivered && reviewMode && (
+            {isDelivered && !isCancelled && reviewMode && (
               <div className="bg-white rounded-2xl p-6 border space-y-6">
                 <h3 className="font-heading text-lg font-semibold">Notez votre commande</h3>
 

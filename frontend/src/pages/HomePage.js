@@ -410,16 +410,10 @@ const HomePage = () => {
                   <span>Conseiller dédié</span>
                 </li>
               </ul>
-              <a 
-                href="https://pro.koyamarket.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-              >
-                <Button className="btn-secondary px-8 py-6 text-lg" data-testid="pro-cta-btn">
+              <Button className="btn-secondary px-8 py-6 text-lg" onClick={() => navigate('/koya-pro')} data-testid="pro-cta-btn">
                   Découvrir KÔYA Pro
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
-              </a>
             </div>
           </div>
         </div>

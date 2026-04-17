@@ -964,17 +964,22 @@ async def cancel_order(order_id: str, user: dict = Depends(get_current_user)):
     except ValueError:
         pass
     
-    await db.orders.update_one({"order_id": order_id}, {"$set": {"status": "cancelled"}})
+    await db.orders.update_one({"order_id": order_id}, {"$set": {
+        "status": "cancelled",
+        "cancelled_at": datetime.now(timezone.utc).isoformat()
+    }})
     
-    return {"message": "Commande annulée. Le remboursement sera effectué sur votre carte de paiement.", "refund_amount": order["total"]}
+    return {"message": "Commande annulée. Le remboursement sera effectué sous 10 jours sur votre carte de paiement.", "refund_amount": order["total"]}
 
 @api_router.get("/orders")
-async def get_orders(user: dict = Depends(get_current_user)):
-    orders = await db.orders.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+async def get_orders(user: dict = Depends(get_current_user), page: int = 1, per_page: int = 5):
+    skip = (page - 1) * per_page
+    orders = await db.orders.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).skip(skip).limit(per_page).to_list(per_page)
+    total = await db.orders.count_documents({"user_id": user["user_id"]})
     for o in orders:
         if isinstance(o.get("created_at"), str):
             o["created_at"] = datetime.fromisoformat(o["created_at"])
-    return orders
+    return {"orders": orders, "total": total, "page": page, "per_page": per_page, "total_pages": max(1, (total + per_page - 1) // per_page)}
 
 @api_router.get("/orders/{order_id}")
 async def get_order(order_id: str, user: dict = Depends(get_current_user)):
@@ -1207,37 +1212,40 @@ async def redeem_loyalty_code(data: LoyaltyCodeRedeem, user: dict = Depends(get_
         "message": "Code fidélité appliqué avec succès !"
     }
 
+class LoyaltyCodeGenerate(BaseModel):
+    points_to_use: int
+
 @api_router.post("/loyalty/generate-code")
-async def generate_loyalty_code(user: dict = Depends(get_current_user)):
-    """Generate a loyalty code to redeem 100 points for 5€ discount"""
+async def generate_loyalty_code(body: LoyaltyCodeGenerate, user: dict = Depends(get_current_user)):
+    """Generate a loyalty code. points_to_use must be a multiple of 100. Each 100pts = 5€."""
+    pts = body.points_to_use
+    if pts < 100 or pts % 100 != 0:
+        raise HTTPException(status_code=400, detail="Le nombre de points doit être un multiple de 100 (min 100).")
+    
     user_doc = await db.users.find_one({"user_id": user["user_id"]}, {"_id": 0})
     points = user_doc.get("loyalty_points", 0)
     
-    if points < 100:
-        raise HTTPException(status_code=400, detail=f"Vous avez {points} points. Il vous faut 100 points pour générer un code.")
+    if points < pts:
+        raise HTTPException(status_code=400, detail=f"Vous avez {points} points. Il vous en faut {pts}.")
     
-    # Generate unique code
+    value = (pts // 100) * 5.0
     code = f"FIDELITE-{uuid.uuid4().hex[:8].upper()}"
     
-    # Store code
     await db.loyalty_codes.insert_one({
         "code": code,
         "user_id": user["user_id"],
-        "value": 5.0,
+        "value": value,
         "used": False,
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
-    # Deduct points
-    await db.users.update_one(
-        {"user_id": user["user_id"]},
-        {"$inc": {"loyalty_points": -100}}
-    )
+    await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"loyalty_points": -pts}})
     
     return {
         "code": code,
-        "value": 5.0,
-        "message": "Code généré ! Utilisez-le lors de votre prochaine commande."
+        "value": value,
+        "points_used": pts,
+        "message": f"Code de {value:.0f}€ généré ! Utilisez-le dans votre panier."
     }
 
 @api_router.get("/faq")

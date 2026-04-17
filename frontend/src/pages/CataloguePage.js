@@ -440,6 +440,28 @@ const CataloguePage = () => {
                 </div>
               </div>
 
+              {/* Related Recipes */}
+              {relatedRecipes.length > 0 && (
+                <div className="mt-8 pt-8 border-t">
+                  <h3 className="font-heading text-xl font-semibold mb-4">Recettes associées</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {relatedRecipes.map((recipe) => (
+                      <div 
+                        key={recipe.recipe_id}
+                        className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl cursor-pointer hover:bg-muted transition-colors"
+                        onClick={() => { setSearchParams({}); setSelectedProduct(null); navigate(`/recettes/${recipe.recipe_id}`); }}
+                      >
+                        <img src={recipe.image_url} alt={recipe.name} className="w-16 h-16 rounded-lg object-cover" />
+                        <div>
+                          <p className="font-medium text-sm">{recipe.name}</p>
+                          <p className="text-xs text-muted-foreground">{recipe.origin_country}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Reviews */}
               <div id="product-reviews-section" className="mt-8 pt-8 border-t">
                 <h3 className="font-heading text-xl font-semibold mb-4">
@@ -468,28 +490,6 @@ const CataloguePage = () => {
                   <p className="text-sm text-muted-foreground">Aucun avis pour ce produit.</p>
                 )}
               </div>
-
-              {/* Related Recipes */}
-              {relatedRecipes.length > 0 && (
-                <div className="mt-8 pt-8 border-t">
-                  <h3 className="font-heading text-xl font-semibold mb-4">Recettes associées</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    {relatedRecipes.map((recipe) => (
-                      <div 
-                        key={recipe.recipe_id}
-                        className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl cursor-pointer hover:bg-muted transition-colors"
-                        onClick={() => { setSearchParams({}); setSelectedProduct(null); navigate(`/recettes/${recipe.recipe_id}`); }}
-                      >
-                        <img src={recipe.image_url} alt={recipe.name} className="w-16 h-16 rounded-lg object-cover" />
-                        <div>
-                          <p className="font-medium text-sm">{recipe.name}</p>
-                          <p className="text-xs text-muted-foreground">{recipe.origin_country}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </>
           )}
         </DialogContent>
