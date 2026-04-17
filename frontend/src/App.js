@@ -20,6 +20,7 @@ import LegalPage from './pages/LegalPage';
 import DeliveryZonePage from './pages/DeliveryZonePage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
 import KoyaProPage from './pages/KoyaProPage';
+import OrderConfirmationPage from './pages/OrderConfirmationPage';
 
 import ScrollToTop from './components/ScrollToTop';
 
@@ -139,6 +140,14 @@ const AppRouter = () => {
         element={
           <ProtectedRoute>
             <Layout><OrderTrackingPage /></Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/confirmation/:orderId" 
+        element={
+          <ProtectedRoute>
+            <Layout><OrderConfirmationPage /></Layout>
           </ProtectedRoute>
         } 
       />

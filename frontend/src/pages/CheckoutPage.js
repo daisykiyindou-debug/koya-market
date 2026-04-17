@@ -138,8 +138,11 @@ const CheckoutPage = () => {
         description: `Commande ${response.data.order.order_id} confirmée. Merci pour votre achat !` 
       });
       
-      await fetchCart();
-      navigate('/compte/commandes');
+      // Navigate first, then fetch cart in background to avoid race condition
+      // where empty cart triggers redirect back to /panier
+      const orderId = response.data.order.order_id;
+      navigate(`/confirmation/${orderId}`);
+      fetchCart(); // Don't await - let it update in background
     } catch (error) {
       const message = error.response?.data?.detail || 'Impossible de passer la commande.';
       toast.error('Paiement refusé', { description: message });

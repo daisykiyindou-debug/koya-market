@@ -355,16 +355,52 @@ const OrderTrackingPage = () => {
                       <span className={`text-xs ${(productReviews[item.product_id]?.comment || '').length >= 20 ? 'text-green-600' : 'text-muted-foreground'}`}>
                         {(productReviews[item.product_id]?.comment || '').length}/20 caractères min.
                       </span>
-                      <label className="flex items-center gap-1 text-xs text-primary cursor-pointer">
+                      <label className="flex items-center gap-1 text-xs text-primary cursor-pointer hover:underline">
                         <Camera className="w-3 h-3" />
-                        <span>Photo</span>
+                        <span>Ajouter une photo</span>
                         <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                          if (e.target.files?.[0]) {
-                            toast.info('Photo sélectionnée', { description: 'La photo sera jointe à votre avis.' });
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                              setProductReviews(prev => ({
+                                ...prev,
+                                [item.product_id]: {
+                                  ...(prev[item.product_id] || {}),
+                                  image_urls: [...(prev[item.product_id]?.image_urls || []), ev.target.result]
+                                }
+                              }));
+                            };
+                            reader.readAsDataURL(file);
                           }
                         }} />
                       </label>
                     </div>
+                    {/* Photo previews */}
+                    {(productReviews[item.product_id]?.image_urls || []).length > 0 && (
+                      <div className="flex gap-2 mt-2">
+                        {productReviews[item.product_id].image_urls.map((url, idx) => (
+                          <div key={idx} className="relative">
+                            <img src={url} alt="" className="w-16 h-16 rounded-lg object-cover border" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProductReviews(prev => ({
+                                  ...prev,
+                                  [item.product_id]: {
+                                    ...prev[item.product_id],
+                                    image_urls: prev[item.product_id].image_urls.filter((_, i) => i !== idx)
+                                  }
+                                }));
+                              }}
+                              className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
 
