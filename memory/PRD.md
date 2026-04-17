@@ -1,42 +1,24 @@
 # KÔYA Market - PRD
 
 ## Architecture
-- Frontend: React + Tailwind + Shadcn UI + Leaflet
-- Backend: FastAPI + MongoDB (Motor)
-- Auth: JWT + Emergent Google OAuth
-- Payment: MOCKED
+React + Tailwind + Shadcn + Leaflet | FastAPI + MongoDB | JWT + Google OAuth | Payment MOCKED
 
-## Implemented Features (April 2026)
+## All Implemented Features (April 2026)
 
-### Core E-commerce
-- 22 products across 11 categories (Épicerie Africaine/Caribéenne first)
-- Product detail with reviews, quantity selector
-- Cart with 50€ minimum, promo codes, loyalty codes
-- Multi-step checkout with delivery slots
-- Order tracking with driver info, map, progress bar, call/message
-
-### User Features
-- JWT + Google OAuth authentication
-- Loyalty program (1€=1pt, 100pts=5€ code)
-- Referral system (+10pts each)
-- Post-delivery reviews (+5pts per review)
-- Address management
-
-### Pages
-- Home, Catalogue, Recipes, About, Contact, Cart, Checkout, Account
-- Zones de livraison (Leaflet map), Careers (job details + CV upload)
-- Order tracking, Legal pages
-
-### Round 3 Additions
-- ScrollToTop on navigation
-- New products (Manioc, Foufou, Semoule, Chips plantain, Bonbons, Sucre canne)
-- Categories reordered (Épicerie Africaine/Caribéenne first)
-- Enhanced order tracking (driver photo, progress bar, call/message, post-delivery reviews)
-- Careers: no spontaneous form, CV upload, click on job for full details
-- Product reviews visible and clickable in catalogue
+### Round 1-4 Complete
+- 22 products, 11 categories (Épicerie Africaine/Caribéenne first)
+- Product reviews: min 20 chars, photo upload, +5pts (1x only), no duplicates
+- Cart: promo codes, loyalty codes, 50€ minimum
+- Checkout: delivery slots, address with door_number, calendar
+- Order tracking: driver photo/info popup, progress bar, call/msg (hidden post-delivery)
+- Post-delivery reviews: products + driver, locked after submission
+- Order cancellation: up to 48h before delivery (pending only)
+- Referral: 200pts each, activated after filleul's 1st purchase
+- Loyalty: 1€=1pt, 100pts=5€ code
+- Pages: Home, Catalogue, Recipes, About, Contact (phone+form, no email), Cart, Checkout, Account, Careers (CV upload, no spontaneous), Zones (Leaflet map), KÔYA Pro (coming soon), Legal
+- FAQ chatbot, newsletter, ScrollToTop
 
 ## Backlog
-- P0: Real Stripe payment
+- P0: Stripe payment integration
 - P1: Email notifications
 - P2: Admin dashboard
-- P3: Real mobile app

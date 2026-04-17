@@ -1017,20 +1017,13 @@ async def create_review(review: ReviewCreate, user: dict = Depends(get_current_u
     if len(review.comment.strip()) < 20:
         raise HTTPException(status_code=400, detail="L'avis doit contenir au moins 20 caractères.")
     
-    # Check if user already reviewed this product for this order
+    # Check if user already reviewed this product
     existing = await db.reviews.find_one({
         "product_id": review.product_id,
-        "user_id": user["user_id"],
-        "user_id": {"$ne": "seed"}
+        "user_id": user["user_id"]
     }, {"_id": 0})
-    # Allow seed reviews but block duplicate user reviews
-    if existing and existing.get("user_id") != "seed":
-        real_existing = await db.reviews.find_one({
-            "product_id": review.product_id,
-            "user_id": user["user_id"]
-        }, {"_id": 0})
-        if real_existing:
-            raise HTTPException(status_code=400, detail="Vous avez déjà donné un avis pour ce produit.")
+    if existing:
+        raise HTTPException(status_code=400, detail="Vous avez déjà donné un avis pour ce produit.")
     
     review_id = f"rev_{uuid.uuid4().hex[:8]}"
     review_doc = {
