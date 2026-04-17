@@ -1,0 +1,83 @@
+{
+  "theme": "light",
+  "archetype": "1 (Organic & Earthy)",
+  "design_vision": "Premium, modern, and fluid e-commerce site for KÔYA Market. Blending high-end editorial aesthetics with the vibrant, natural richness of Afro-Caribbean culture. Avoids clichés by using elegant typography, generous negative space, and a refined palette of dark green and orange.",
+  "colors": {
+    "primary": "#043F2E",
+    "primary_foreground": "#FFFFFF",
+    "secondary": "#EA580C",
+    "secondary_foreground": "#FFFFFF",
+    "accent": "#FDE68A",
+    "background": "#FDFBF7",
+    "surface": "#FFFFFF",
+    "text_primary": "#1C1917",
+    "text_secondary": "#57534E",
+    "border": "#E7E5E4",
+    "success": "#10B981"
+  },
+  "typography": {
+    "headings": {
+      "family": "Outfit",
+      "weights": ["400", "500", "600"],
+      "usage_rules": "Use slightly bold (500/600) for H1/H2. Keep letter spacing tight (tracking-tight). Avoid generic sans."
+    },
+    "body": {
+      "family": "Manrope",
+      "weights": ["300", "400"],
+      "usage_rules": "Thin and design aesthetics. Use 300 (light) or 400 (regular) for body copy. Loose line height (leading-relaxed)."
+    }
+  },
+  "spacing_and_layout": {
+    "general_rule": "Generous spacing. Use p-8 to p-16 for section padding. Containers must have internal padding to avoid text collision.",
+    "grid_system": "Use bento grid for the About Us and Features sections. Product grids should use 4 columns on desktop (grid-cols-4) with gap-6. Mobile-first (grid-cols-1 or 2).",
+    "borders_and_radius": "Subtle roundness. rounded-2xl for main cards, rounded-full for buttons. Use 1px borders (border-border) instead of heavy drop shadows for a premium flat look."
+  },
+  "components": {
+    "hero": "Requires a delivery zone checker (input + submit button). Overlay the hero image with bg-black/30 or gradient to transparent to ensure text contrast while letting the image breathe.",
+    "product_card": "Cardless or flat surface look. Large high-quality image container. Quick add-to-cart button that appears on hover.",
+    "recipe_card": "Immersive image. Portion adjuster component (Shadcn Stepper/Input) that updates ingredient lists dynamically.",
+    "buttons": "Primary CTA in Vibrant Orange. Secondary actions in Dark Green or subtle outline.",
+    "navigation": "Sticky header with crystal glassmorphism (backdrop-blur-xl bg-white/80 border-b border-border/40). Minimalist links.",
+    "chatbot": "Floating action button in the bottom right, using Phosphor Icons or Lucide.",
+    "icons": "Use Phosphor Icons (Duotone) for a high-end look."
+  },
+  "motion": {
+    "hover": "Images subtly scale up (hover:scale-105 duration-300). Buttons lift slightly (hover:-translate-y-1).",
+    "page_load": "Staggered fade-in for product grids. Smooth scrolling utilizing Lenis."
+  },
+  "image_urls": [
+    {
+      "category": "hero_background",
+      "url": "https://images.unsplash.com/photo-1695653422952-93bf055732fe?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzF8MHwxfHNlYXJjaHwxfHxncm9jZXJ5JTIwZGVsaXZlcnklMjBwZXJzb24lMjBzbWlsaW5nfGVufDB8fHx8MTc3NjQzMjg1OXww&ixlib=rb-4.1.0&q=85",
+      "description": "Premium grocery delivery bag in store, smiling woman."
+    },
+    {
+      "category": "recipe_lifestyle",
+      "url": "https://images.unsplash.com/photo-1773332585861-72cf1558a6fc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzOTB8MHwxfHNlYXJjaHwxfHxibGFjayUyMHBlcnNvbiUyMGNvb2tpbmclMjBtb2Rlcm4lMjBraXRjaGVufGVufDB8fHx8MTc3NjQzMjg1OXww&ixlib=rb-4.1.0&q=85",
+      "description": "Black woman following recipe on tablet in modern kitchen."
+    },
+    {
+      "category": "product_tropical",
+      "url": "https://images.unsplash.com/photo-1669128351671-181d1ca87f7a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzR8MHwxfHNlYXJjaHw0fHxmcmVzaCUyMHRyb3BpY2FsJTIwZnJ1aXRzJTIwcGxhbnRhaW5zJTIweWFtcyUyMG1hcmtldHxlbnwwfHx8fDE3NzY0MzI4NTl8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Fresh tropical bananas and plantains."
+    },
+    {
+      "category": "about_us_heritage",
+      "url": "https://images.unsplash.com/photo-1774415108927-ab76336ca9c8?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzOTB8MHwxfHNlYXJjaHw0fHxibGFjayUyMHBlcnNvbiUyMGNvb2tpbmclMjBtb2Rlcm4lMjBraXRjaGVufGVufDB8fHx8MTc3NjQzMjg1OXww&ixlib=rb-4.1.0&q=85",
+      "description": "Modern kitchen illuminated by warm sunset light, depicting organic lifestyle."
+    }
+  ],
+  "accessibility_and_testing": {
+    "data_testid": "MANDATORY on all interactive elements (e.g. data-testid='delivery-zone-input', data-testid='add-to-cart-btn').",
+    "contrast": "Ensure text contrast on primary/secondary buttons meets APCA guidelines. If vibrant orange fails contrast with white text, switch text to dark stone (#1C1917)."
+  },
+  "pages_to_build": [
+    "Home",
+    "Catalog",
+    "Recipes",
+    "About Us",
+    "My Account",
+    "Cart/Checkout",
+    "Contact"
+  ]
+}
