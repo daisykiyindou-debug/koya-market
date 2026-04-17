@@ -307,6 +307,26 @@ const AccountPage = () => {
                           </div>
                           <div className="text-right flex items-center gap-3">
                             <p className="font-semibold">{order.total.toFixed(2)}€</p>
+                            {order.status === 'pending' && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    const res = await axios.post(`${API}/orders/${order.order_id}/cancel`, {}, { headers: { Authorization: `Bearer ${token}` }});
+                                    toast.success('Commande annulée', { description: res.data.message });
+                                    fetchData();
+                                  } catch (err) {
+                                    toast.error('Erreur', { description: err.response?.data?.detail || 'Impossible d\'annuler.' });
+                                  }
+                                }}
+                                data-testid={`cancel-order-${order.order_id}`}
+                              >
+                                Annuler
+                              </Button>
+                            )}
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -486,20 +506,54 @@ const AccountPage = () => {
                           <p className="font-medium">{address.label}</p>
                           <p className="text-sm text-muted-foreground">{address.street}</p>
                           <p className="text-sm text-muted-foreground">{address.postal_code} {address.city}</p>
+                          {address.door_number && (
+                            <p className="text-sm text-muted-foreground">Porte : {address.door_number}</p>
+                          )}
+                          {address.digicode && (
+                            <p className="text-sm text-muted-foreground">Digicode : {address.digicode}</p>
+                          )}
                           {address.is_default && (
                             <span className="inline-block mt-2 px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">
                               Adresse par défaut
                             </span>
                           )}
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-destructive"
-                          onClick={() => handleDeleteAddress(address.address_id)}
-                        >
-                          Supprimer
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => {
+                              const newLabel = prompt('Nom de l\'adresse', address.label);
+                              if (newLabel !== null) {
+                                const newStreet = prompt('Adresse', address.street);
+                                const newPostal = prompt('Code postal', address.postal_code);
+                                const newCity = prompt('Ville', address.city);
+                                const newDoor = prompt('Numéro de porte', address.door_number || '');
+                                const newDigicode = prompt('Digicode', address.digicode || '');
+                                const newFloor = prompt('Étage', address.floor || '');
+                                if (newLabel && newStreet && newPostal && newCity) {
+                                  axios.put(`${API}/users/addresses/${address.address_id}`, {
+                                    label: newLabel, street: newStreet, postal_code: newPostal, city: newCity,
+                                    door_number: newDoor || '', digicode: newDigicode || '', floor: newFloor || '',
+                                    elevator: address.elevator, is_default: address.is_default
+                                  }, { headers: { Authorization: `Bearer ${token}` }})
+                                    .then(() => { toast.success('Adresse modifiée'); fetchData(); })
+                                    .catch(() => toast.error('Erreur'));
+                                }
+                              }
+                            }}
+                          >
+                            Modifier
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-destructive"
+                            onClick={() => handleDeleteAddress(address.address_id)}
+                          >
+                            Supprimer
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -622,7 +676,7 @@ const ReferralSection = ({ token }) => {
           <h2 className="font-heading text-2xl font-semibold">Parrainage</h2>
         </div>
         <p className="text-white/80 mb-6">
-          Invitez vos amis et gagnez chacun 10 points de fidélité !
+          Invitez vos amis et gagnez chacun 200 points de fidélité après leur 1er achat !
         </p>
         
         {referralInfo && (
@@ -646,7 +700,7 @@ const ReferralSection = ({ token }) => {
       <div className="bg-white rounded-2xl p-6">
         <h3 className="font-heading text-lg font-semibold mb-4">Utiliser un code de parrainage</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Un ami vous a partagé son code ? Entrez-le ci-dessous pour recevoir vos 10 points.
+          Un ami vous a partagé son code ? Entrez-le ci-dessous. Les 200 points seront crédités après votre 1ère commande.
         </p>
         <div className="flex gap-2">
           <input
@@ -690,7 +744,7 @@ const ReferralSection = ({ token }) => {
             </div>
             <div>
               <p className="font-medium">Vous gagnez tous les deux !</p>
-              <p className="text-sm text-muted-foreground">Chacun reçoit 10 points de fidélité</p>
+              <p className="text-sm text-muted-foreground">Chacun reçoit 200 points de fidélité après le 1er achat</p>
             </div>
           </div>
         </div>

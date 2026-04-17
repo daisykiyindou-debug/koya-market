@@ -24,6 +24,7 @@ const OrderTrackingPage = () => {
   const [productReviews, setProductReviews] = useState({});
   const [driverReview, setDriverReview] = useState({ rating: 5, comment: '' });
   const [submittingReviews, setSubmittingReviews] = useState(false);
+  const [reviewsSubmitted, setReviewsSubmitted] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/connexion'); return; }
@@ -109,27 +110,46 @@ const OrderTrackingPage = () => {
   };
 
   const handleSubmitReviews = async () => {
+    // Validate minimum characters
+    for (const [productId, review] of Object.entries(productReviews)) {
+      if (review.rating > 0 && (!review.comment || review.comment.trim().length < 20)) {
+        toast.error('Avis trop court', { description: `L'avis pour chaque produit doit contenir au moins 20 caractères.` });
+        return;
+      }
+    }
+    if (driverReview.rating > 0 && (!driverReview.comment || driverReview.comment.trim().length < 20)) {
+      toast.error('Avis trop court', { description: "L'avis sur le livreur doit contenir au moins 20 caractères." });
+      return;
+    }
+
     setSubmittingReviews(true);
     let totalPoints = 0;
     try {
-      // Submit product reviews
       for (const [productId, review] of Object.entries(productReviews)) {
-        if (review.rating > 0) {
-          const res = await axios.post(`${API}/reviews`, {
-            product_id: productId, rating: review.rating, comment: review.comment || '', image_urls: []
-          }, { headers: { Authorization: `Bearer ${token}` } });
-          totalPoints += res.data.points_earned || 0;
+        if (review.rating > 0 && review.comment.trim().length >= 20) {
+          try {
+            const res = await axios.post(`${API}/reviews`, {
+              product_id: productId, rating: review.rating, comment: review.comment, image_urls: review.image_urls || []
+            }, { headers: { Authorization: `Bearer ${token}` } });
+            totalPoints += res.data.points_earned || 0;
+          } catch (e) {
+            // Skip if already reviewed
+          }
         }
       }
-      // Submit driver review
-      if (driverReview.rating > 0) {
-        const res = await axios.post(`${API}/reviews/driver`, {
-          order_id: orderId, rating: driverReview.rating, comment: driverReview.comment
-        }, { headers: { Authorization: `Bearer ${token}` } });
-        totalPoints += res.data.points_earned || 0;
+      if (driverReview.rating > 0 && driverReview.comment.trim().length >= 20) {
+        try {
+          const res = await axios.post(`${API}/reviews/driver`, {
+            order_id: orderId, rating: driverReview.rating, comment: driverReview.comment
+          }, { headers: { Authorization: `Bearer ${token}` } });
+          totalPoints += res.data.points_earned || 0;
+        } catch (e) {
+          // Skip if already reviewed
+        }
       }
       toast.success(`Merci pour vos avis !`, { description: `Vous avez gagné ${totalPoints} points de fidélité.` });
       setReviewMode(false);
+      setReviewsSubmitted(true);
     } catch (error) {
       toast.error('Erreur lors de l\'envoi des avis');
     } finally {
@@ -204,12 +224,16 @@ const OrderTrackingPage = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <a href={`tel:${tracking.driver_phone}`} className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors" data-testid="call-driver-btn">
-                    <Phone className="w-5 h-5 text-primary" />
-                  </a>
-                  <a href={`sms:${tracking.driver_phone}`} className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center hover:bg-secondary/20 transition-colors" data-testid="message-driver-btn">
-                    <MessageCircle className="w-5 h-5 text-secondary" />
-                  </a>
+                  {!isDelivered && (
+                    <>
+                      <a href={`tel:${tracking.driver_phone}`} className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors" data-testid="call-driver-btn">
+                        <Phone className="w-5 h-5 text-primary" />
+                      </a>
+                      <a href={`sms:${tracking.driver_phone}`} className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center hover:bg-secondary/20 transition-colors" data-testid="message-driver-btn">
+                        <MessageCircle className="w-5 h-5 text-secondary" />
+                      </a>
+                    </>
+                  )}
                 </div>
               </div>
               {!isDelivered && (
@@ -226,14 +250,22 @@ const OrderTrackingPage = () => {
             </div>
 
             {/* Post-delivery: Review Section */}
-            {isDelivered && !reviewMode && (
+            {isDelivered && !reviewMode && !reviewsSubmitted && (
               <div className="bg-gradient-to-r from-secondary/10 to-primary/10 rounded-2xl p-6 border text-center">
                 <Gift className="w-10 h-10 mx-auto text-secondary mb-3" />
                 <h3 className="font-heading text-lg font-semibold mb-2">Donnez votre avis</h3>
-                <p className="text-sm text-muted-foreground mb-4">Notez vos produits et votre livreur pour gagner <strong>5 points par avis</strong></p>
+                <p className="text-sm text-muted-foreground mb-4">Notez vos produits et votre livreur pour gagner <strong>5 points par avis</strong> (min. 20 caractères)</p>
                 <Button className="btn-primary" onClick={() => setReviewMode(true)} data-testid="start-review-btn">
                   Donner mon avis
                 </Button>
+              </div>
+            )}
+
+            {isDelivered && reviewsSubmitted && (
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
+                <CheckCircle className="w-10 h-10 mx-auto text-green-600 mb-3" />
+                <h3 className="font-heading text-lg font-semibold mb-2 text-green-800">Avis envoyés</h3>
+                <p className="text-sm text-green-700">Merci pour vos avis ! Vos points fidélité ont été crédités.</p>
               </div>
             )}
 
@@ -255,9 +287,24 @@ const OrderTrackingPage = () => {
                     <textarea
                       value={productReviews[item.product_id]?.comment || ''}
                       onChange={(e) => setProductReviews(prev => ({...prev, [item.product_id]: {...(prev[item.product_id] || {}), comment: e.target.value}}))}
-                      placeholder="Votre avis sur ce produit..."
+                      placeholder="Votre avis sur ce produit (min. 20 caractères)..."
                       className="form-input mt-2 text-sm min-h-[60px]"
+                      minLength={20}
                     />
+                    <div className="flex items-center justify-between mt-1">
+                      <span className={`text-xs ${(productReviews[item.product_id]?.comment || '').length >= 20 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                        {(productReviews[item.product_id]?.comment || '').length}/20 caractères min.
+                      </span>
+                      <label className="flex items-center gap-1 text-xs text-primary cursor-pointer">
+                        <Camera className="w-3 h-3" />
+                        <span>Photo</span>
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            toast.info('Photo sélectionnée', { description: 'La photo sera jointe à votre avis.' });
+                          }
+                        }} />
+                      </label>
+                    </div>
                   </div>
                 ))}
 

@@ -19,6 +19,7 @@ import CareersPage from './pages/CareersPage';
 import LegalPage from './pages/LegalPage';
 import DeliveryZonePage from './pages/DeliveryZonePage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
+import KoyaProPage from './pages/KoyaProPage';
 
 import ScrollToTop from './components/ScrollToTop';
 
@@ -66,6 +67,7 @@ const AppRouter = () => {
       <Route path="/carrieres" element={<Layout><CareersPage /></Layout>} />
       <Route path="/carrieres/:jobId" element={<Layout><CareersPage /></Layout>} />
       <Route path="/zones-livraison" element={<Layout><DeliveryZonePage /></Layout>} />
+      <Route path="/koya-pro" element={<KoyaProPage />} />
       <Route path="/cgv" element={<Layout><LegalPage type="cgv" /></Layout>} />
       <Route path="/confidentialite" element={<Layout><LegalPage type="confidentialite" /></Layout>} />
       <Route path="/mentions-legales" element={<Layout><LegalPage type="mentions-legales" /></Layout>} />

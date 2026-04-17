@@ -64,6 +64,7 @@ class AddressCreate(BaseModel):
     details: Optional[str] = None
     digicode: Optional[str] = None
     floor: Optional[str] = None
+    door_number: Optional[str] = None
     elevator: bool = False
     is_default: bool = False
 
@@ -77,6 +78,7 @@ class AddressResponse(BaseModel):
     details: Optional[str] = None
     digicode: Optional[str] = None
     floor: Optional[str] = None
+    door_number: Optional[str] = None
     elevator: bool = False
     is_default: bool = False
 
@@ -932,7 +934,39 @@ async def create_order(order_data: OrderCreate, user: dict = Depends(get_current
     # Clear cart
     await db.carts.update_one({"user_id": user["user_id"]}, {"$set": {"items": []}})
     
+    # Check if this is user's first order - award referral points
+    user_order_count = await db.orders.count_documents({"user_id": user["user_id"]})
+    if user_order_count == 1:  # This is the first order (just created)
+        pending_referral = await db.referrals.find_one({"referred_id": user["user_id"], "points_awarded": False}, {"_id": 0})
+        if pending_referral:
+            await db.users.update_one({"user_id": pending_referral["referrer_id"]}, {"$inc": {"loyalty_points": 200}})
+            await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"loyalty_points": 200}})
+            await db.referrals.update_one({"referred_id": user["user_id"]}, {"$set": {"points_awarded": True}})
+    
     return {"order": order, "points_earned": points_earned}
+
+@api_router.post("/orders/{order_id}/cancel")
+async def cancel_order(order_id: str, user: dict = Depends(get_current_user)):
+    order = await db.orders.find_one({"order_id": order_id, "user_id": user["user_id"]}, {"_id": 0})
+    if not order:
+        raise HTTPException(status_code=404, detail="Commande non trouvée")
+    
+    if order["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Seules les commandes en attente peuvent être annulées.")
+    
+    # Check 48h before delivery date
+    delivery_date_str = order.get("delivery_date", "")
+    try:
+        delivery_date = datetime.strptime(delivery_date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        hours_until = (delivery_date - datetime.now(timezone.utc)).total_seconds() / 3600
+        if hours_until < 48:
+            raise HTTPException(status_code=400, detail="L'annulation n'est possible que jusqu'à 48h avant la date de livraison.")
+    except ValueError:
+        pass
+    
+    await db.orders.update_one({"order_id": order_id}, {"$set": {"status": "cancelled"}})
+    
+    return {"message": "Commande annulée. Le remboursement sera effectué sur votre carte de paiement.", "refund_amount": order["total"]}
 
 @api_router.get("/orders")
 async def get_orders(user: dict = Depends(get_current_user)):
@@ -979,6 +1013,25 @@ async def get_product_reviews(product_id: str, limit: int = 10):
 
 @api_router.post("/reviews")
 async def create_review(review: ReviewCreate, user: dict = Depends(get_current_user)):
+    # Check minimum comment length
+    if len(review.comment.strip()) < 20:
+        raise HTTPException(status_code=400, detail="L'avis doit contenir au moins 20 caractères.")
+    
+    # Check if user already reviewed this product for this order
+    existing = await db.reviews.find_one({
+        "product_id": review.product_id,
+        "user_id": user["user_id"],
+        "user_id": {"$ne": "seed"}
+    }, {"_id": 0})
+    # Allow seed reviews but block duplicate user reviews
+    if existing and existing.get("user_id") != "seed":
+        real_existing = await db.reviews.find_one({
+            "product_id": review.product_id,
+            "user_id": user["user_id"]
+        }, {"_id": 0})
+        if real_existing:
+            raise HTTPException(status_code=400, detail="Vous avez déjà donné un avis pour ce produit.")
+    
     review_id = f"rev_{uuid.uuid4().hex[:8]}"
     review_doc = {
         "review_id": review_id,
@@ -1021,6 +1074,14 @@ async def review_driver(review: DriverReviewCreate, user: dict = Depends(get_cur
     order = await db.orders.find_one({"order_id": review.order_id, "user_id": user["user_id"]}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Commande non trouvée")
+    
+    if len(review.comment.strip()) < 20:
+        raise HTTPException(status_code=400, detail="L'avis doit contenir au moins 20 caractères.")
+    
+    # Check if already reviewed this order's driver
+    existing = await db.driver_reviews.find_one({"order_id": review.order_id, "user_id": user["user_id"]}, {"_id": 0})
+    if existing:
+        raise HTTPException(status_code=400, detail="Vous avez déjà noté le livreur pour cette commande.")
     
     review_id = f"drev_{uuid.uuid4().hex[:8]}"
     review_doc = {
@@ -1202,11 +1263,13 @@ async def get_referral_info(user: dict = Depends(get_current_user)):
         referral_code = f"KOYA-{user['user_id'][-6:].upper()}"
         await db.users.update_one({"user_id": user["user_id"]}, {"$set": {"referral_code": referral_code}})
     
-    referrals_count = await db.referrals.count_documents({"referrer_id": user["user_id"]})
+    referrals_count = await db.referrals.count_documents({"referrer_id": user["user_id"], "points_awarded": True})
+    pending_count = await db.referrals.count_documents({"referrer_id": user["user_id"], "points_awarded": False})
     return {
         "referral_code": referral_code,
         "referrals_count": referrals_count,
-        "points_per_referral": 10
+        "pending_referrals": pending_count,
+        "points_per_referral": 200
     }
 
 @api_router.post("/referral/apply")
@@ -1223,17 +1286,16 @@ async def apply_referral(data: ReferralApply, user: dict = Depends(get_current_u
     if existing:
         raise HTTPException(status_code=400, detail="Vous avez déjà utilisé un code de parrainage")
     
+    # Store referral but DON'T award points yet - only after first purchase
     await db.referrals.insert_one({
         "referrer_id": referrer["user_id"],
         "referred_id": user["user_id"],
         "code": code,
+        "points_awarded": False,
         "created_at": datetime.now(timezone.utc).isoformat()
     })
     
-    await db.users.update_one({"user_id": referrer["user_id"]}, {"$inc": {"loyalty_points": 10}})
-    await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"loyalty_points": 10}})
-    
-    return {"message": "Code de parrainage appliqué ! Vous et votre ami avez reçu 10 points de fidélité."}
+    return {"message": "Code de parrainage enregistré ! Les 200 points seront attribués après votre première commande."}
 
 # ==================== JOBS ====================
 

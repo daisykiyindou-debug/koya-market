@@ -67,14 +67,12 @@ const Header = () => {
                 {link.name}
               </Link>
             ))}
-            <a 
-              href="https://pro.koyamarket.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
+            <Link 
+              to="/koya-pro"
               className="nav-link text-secondary font-semibold"
             >
               KÔYA Pro
-            </a>
+            </Link>
           </nav>
 
           {/* Right Actions */}
@@ -206,15 +204,13 @@ const Header = () => {
                 {link.name}
               </Link>
             ))}
-            <a 
-              href="https://pro.koyamarket.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
+            <Link 
+              to="/koya-pro"
               className="text-lg py-2 text-secondary font-semibold"
               onClick={() => setMobileMenuOpen(false)}
             >
               KÔYA Market Pro
-            </a>
+            </Link>
           </nav>
         </div>
       </div>

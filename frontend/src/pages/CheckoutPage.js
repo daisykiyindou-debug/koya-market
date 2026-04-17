@@ -45,6 +45,7 @@ const CheckoutPage = () => {
     postal_code: '',
     digicode: '',
     floor: '',
+    door_number: '',
     elevator: false,
     is_default: false
   });
@@ -99,7 +100,7 @@ const CheckoutPage = () => {
       setAddresses([...addresses, response.data]);
       setSelectedAddress(response.data.address_id);
       setShowAddressDialog(false);
-      setNewAddress({ label: '', street: '', city: '', postal_code: '', digicode: '', floor: '', elevator: false, is_default: false });
+      setNewAddress({ label: '', street: '', city: '', postal_code: '', digicode: '', floor: '', door_number: '', elevator: false, is_default: false });
       toast.success('Adresse ajoutée');
     } catch (error) {
       toast.error('Erreur', { description: 'Impossible d\'ajouter l\'adresse.' });
@@ -294,6 +295,18 @@ const CheckoutPage = () => {
                             className="form-input"
                           />
                         </div>
+                        <div>
+                          <label className="form-label">Numéro de porte</label>
+                          <input
+                            type="text"
+                            value={newAddress.door_number}
+                            onChange={(e) => setNewAddress({...newAddress, door_number: e.target.value})}
+                            placeholder="Apt 12"
+                            className="form-input"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="form-label">Étage</label>
                           <input
