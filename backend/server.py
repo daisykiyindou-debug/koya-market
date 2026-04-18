@@ -1064,12 +1064,34 @@ async def cancel_order(order_id: str, user: dict = Depends(get_current_user)):
         "points_deducted": points_to_deduct
     }
 
+def _compute_simulated_status(order: dict) -> str:
+    """Return the time-based simulated status for an order (preserves cancelled)."""
+    if order.get("status") == "cancelled":
+        return "cancelled"
+    created_at = order.get("created_at")
+    if isinstance(created_at, str):
+        created_at = datetime.fromisoformat(created_at)
+    if created_at is None:
+        return order.get("status", "pending")
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    elapsed = (datetime.now(timezone.utc) - created_at).total_seconds() / 60
+    if elapsed < 5:
+        return "pending"
+    if elapsed < 15:
+        return "preparing"
+    if elapsed < 30:
+        return "delivering"
+    return "delivered"
+
 @api_router.get("/orders")
 async def get_orders(user: dict = Depends(get_current_user), page: int = 1, per_page: int = 5):
     skip = (page - 1) * per_page
     orders = await db.orders.find({"user_id": user["user_id"]}, {"_id": 0}).sort("created_at", -1).skip(skip).limit(per_page).to_list(per_page)
     total = await db.orders.count_documents({"user_id": user["user_id"]})
     for o in orders:
+        # Sync with the simulated tracking status (cancelled is preserved)
+        o["status"] = _compute_simulated_status(o)
         if isinstance(o.get("created_at"), str):
             o["created_at"] = datetime.fromisoformat(o["created_at"])
     return {"orders": orders, "total": total, "page": page, "per_page": per_page, "total_pages": max(1, (total + per_page - 1) // per_page)}
@@ -1079,6 +1101,7 @@ async def get_order(order_id: str, user: dict = Depends(get_current_user)):
     order = await db.orders.find_one({"order_id": order_id, "user_id": user["user_id"]}, {"_id": 0})
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    order["status"] = _compute_simulated_status(order)
     if isinstance(order.get("created_at"), str):
         order["created_at"] = datetime.fromisoformat(order["created_at"])
     return order

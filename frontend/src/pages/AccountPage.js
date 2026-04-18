@@ -61,6 +61,14 @@ const AccountPage = () => {
     }
   }, [isAuthenticated, activeTab, ordersPage]);
 
+  // Auto-refresh orders every 15s so the status stays in sync with live tracking
+  useEffect(() => {
+    if (!isAuthenticated || activeTab !== 'commandes') return;
+    const interval = setInterval(() => { fetchData(); }, 15000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, activeTab, ordersPage]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
