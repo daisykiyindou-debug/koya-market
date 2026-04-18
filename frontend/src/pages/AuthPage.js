@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Mail, Lock, User, Phone, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 const AuthPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, register, loginWithGoogle } = useAuth();
 
   const [isLogin, setIsLogin] = useState(true);
@@ -36,7 +37,8 @@ const AuthPage = () => {
         await register(formData.name, formData.email, formData.password, formData.phone);
         toast.success('Compte créé !', { description: 'Bienvenue sur KÔYA Market.' });
       }
-      navigate('/');
+      const redirectTo = location.state?.from?.pathname || '/';
+      navigate(redirectTo, { replace: true });
     } catch (error) {
       const message = error.response?.data?.detail || 'Une erreur est survenue.';
       toast.error('Erreur', { description: message });
@@ -58,7 +60,7 @@ const AuthPage = () => {
             <span className="font-heading text-3xl font-semibold text-primary">KÔYA</span>
             <span className="font-heading text-xl text-secondary ml-1">Market</span>
           </Link>
-          <p className="text-muted-foreground mt-2">Les saveurs afro-caribéennes livrées chez vous</p>
+          <p className="text-muted-foreground mt-2">Les saveurs afro-caraïbéennes livrées chez vous</p>
         </div>
 
         {/* Card */}

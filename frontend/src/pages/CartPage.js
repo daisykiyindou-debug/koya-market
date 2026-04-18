@@ -108,28 +108,6 @@ const CartPage = () => {
   const totalBeforeDiscounts = cart.subtotal + deliveryFee;
   const totalAfterDiscounts = Math.max(0, totalBeforeDiscounts - promoDiscount - loyaltyDiscount);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center py-12">
-        <div className="text-center max-w-md px-4">
-          <ShoppingBag className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="font-heading text-2xl font-semibold mb-2">Votre panier est vide</h1>
-          <p className="text-muted-foreground mb-6">
-            Connectez-vous pour ajouter des produits et passer commande.
-          </p>
-          <div className="flex flex-col gap-3">
-            <Button onClick={() => navigate('/connexion')} className="btn-primary" data-testid="login-to-cart-btn">
-              Se connecter
-            </Button>
-            <Button onClick={() => navigate('/catalogue')} variant="outline">
-              Parcourir le catalogue
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -145,7 +123,7 @@ const CartPage = () => {
           <ShoppingBag className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
           <h1 className="font-heading text-2xl font-semibold mb-2">Votre panier est vide</h1>
           <p className="text-muted-foreground mb-6">
-            Découvrez nos produits afro-caribéens et commencez vos achats.
+            Découvrez nos produits afro-caraïbéens et commencez vos achats.
           </p>
           <Button onClick={() => navigate('/catalogue')} className="btn-primary" data-testid="browse-products-btn">
             Parcourir le catalogue

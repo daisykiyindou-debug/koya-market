@@ -17,7 +17,6 @@ import AccountPage from './pages/AccountPage';
 import ContactPage from './pages/ContactPage';
 import CareersPage from './pages/CareersPage';
 import LegalPage from './pages/LegalPage';
-import DeliveryZonePage from './pages/DeliveryZonePage';
 import OrderTrackingPage from './pages/OrderTrackingPage';
 import KoyaProPage from './pages/KoyaProPage';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
@@ -67,7 +66,6 @@ const AppRouter = () => {
       <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
       <Route path="/carrieres" element={<Layout><CareersPage /></Layout>} />
       <Route path="/carrieres/:jobId" element={<Layout><CareersPage /></Layout>} />
-      <Route path="/zones-livraison" element={<Layout><DeliveryZonePage /></Layout>} />
       <Route path="/koya-pro" element={<KoyaProPage />} />
       <Route path="/cgv" element={<Layout><LegalPage type="cgv" /></Layout>} />
       <Route path="/confidentialite" element={<Layout><LegalPage type="confidentialite" /></Layout>} />

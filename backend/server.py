@@ -839,6 +839,79 @@ async def clear_cart(user: dict = Depends(get_current_user)):
     )
     return {"message": "Cart cleared"}
 
+class GuestCartItems(BaseModel):
+    items: List[CartItem] = []
+
+async def _enrich_cart_items(items: list):
+    """Given a list of {product_id, quantity}, return enriched items + subtotal."""
+    enriched = []
+    subtotal = 0.0
+    for item in items:
+        pid = item.get("product_id") if isinstance(item, dict) else item.product_id
+        qty = item.get("quantity") if isinstance(item, dict) else item.quantity
+        if not pid or qty is None or qty <= 0:
+            continue
+        product = await db.products.find_one({"product_id": pid}, {"_id": 0})
+        if product:
+            item_total = product["price"] * qty
+            enriched.append({
+                "product_id": pid,
+                "quantity": qty,
+                "product": product,
+                "total": item_total
+            })
+            subtotal += item_total
+    return enriched, round(subtotal, 2)
+
+@api_router.post("/cart/compute")
+async def compute_cart(payload: GuestCartItems):
+    """Public endpoint: compute an enriched cart view from a list of items (for guest users)."""
+    items = [i.model_dump() for i in payload.items]
+    enriched, subtotal = await _enrich_cart_items(items)
+    return {
+        "cart_id": "guest",
+        "user_id": None,
+        "items": enriched,
+        "subtotal": subtotal,
+        "minimum_reached": subtotal >= 50,
+        "amount_to_minimum": round(max(0.0, 50 - subtotal), 2)
+    }
+
+@api_router.post("/cart/merge")
+async def merge_cart(payload: GuestCartItems, user: dict = Depends(get_current_user)):
+    """Merge a list of guest-cart items into the authenticated user's cart."""
+    if not payload.items:
+        return await get_cart(user)
+
+    cart = await db.carts.find_one({"user_id": user["user_id"]}, {"_id": 0})
+    if not cart:
+        await db.carts.insert_one({
+            "cart_id": f"cart_{uuid.uuid4().hex[:8]}",
+            "user_id": user["user_id"],
+            "items": []
+        })
+
+    for guest_item in payload.items:
+        product = await db.products.find_one({"product_id": guest_item.product_id}, {"_id": 0})
+        if not product or guest_item.quantity <= 0:
+            continue
+        existing = await db.carts.find_one({
+            "user_id": user["user_id"],
+            "items.product_id": guest_item.product_id
+        }, {"_id": 0})
+        if existing:
+            await db.carts.update_one(
+                {"user_id": user["user_id"], "items.product_id": guest_item.product_id},
+                {"$inc": {"items.$.quantity": guest_item.quantity}}
+            )
+        else:
+            await db.carts.update_one(
+                {"user_id": user["user_id"]},
+                {"$push": {"items": {"product_id": guest_item.product_id, "quantity": guest_item.quantity}}}
+            )
+
+    return await get_cart(user)
+
 @api_router.post("/cart/add-recipe-ingredients")
 async def add_recipe_ingredients(request: Request, user: dict = Depends(get_current_user)):
     body = await request.json()
@@ -1345,7 +1418,7 @@ JOBS_DATA = [
     {
         "id": "livreur", "title": "Livreur / Livreuse", "location": "Paris & IDF", "type": "CDI / Temps partiel",
         "salary": "1 800€ - 2 200€ brut/mois", "department": "Logistique",
-        "description": "Rejoignez notre équipe de livraison et participez à la satisfaction de nos clients en livrant des produits afro-caribéens de qualité à domicile.",
+        "description": "Rejoignez notre équipe de livraison et participez à la satisfaction de nos clients en livrant des produits afro-caraïbéens de qualité à domicile.",
         "missions": ["Assurer les livraisons dans les délais impartis (3h max)", "Garantir la qualité des produits pendant le transport", "Offrir un service client irréprochable à chaque livraison", "Gérer les retours et réclamations sur le terrain", "Entretenir le véhicule de livraison"],
         "requirements": ["Permis B obligatoire", "Connaissance de Paris et de l'Île-de-France", "Ponctualité et sens du service", "Bonne condition physique", "Smartphone requis pour l'application de livraison"],
         "benefits": ["Primes sur objectifs", "Véhicule fourni", "Mutuelle d'entreprise", "Tickets restaurant", "Réductions sur les produits KÔYA"]
@@ -1363,7 +1436,7 @@ JOBS_DATA = [
         "salary": "2 800€ - 3 500€ brut/mois", "department": "Marketing",
         "description": "Vous piloterez la stratégie digitale de KÔYA Market pour accroître la notoriété et développer l'acquisition client.",
         "missions": ["Concevoir et piloter les campagnes marketing digitales", "Gérer les réseaux sociaux (Instagram, TikTok, Facebook)", "Analyser les KPIs et optimiser les performances", "Créer du contenu engageant (visuels, vidéos, rédactionnel)", "Collaborer avec les influenceurs et partenaires"],
-        "requirements": ["Bac+3/5 en Marketing Digital", "3+ ans d'expérience en marketing digital", "Maîtrise des outils analytics (GA4, Meta Business)", "Créativité et sensibilité culturelle", "Connaissance de la culture afro-caribéenne appréciée"],
+        "requirements": ["Bac+3/5 en Marketing Digital", "3+ ans d'expérience en marketing digital", "Maîtrise des outils analytics (GA4, Meta Business)", "Créativité et sensibilité culturelle", "Connaissance de la culture afro-caraïbéenne appréciée"],
         "benefits": ["Télétravail 2j/semaine", "Macbook Pro fourni", "Budget formation", "Tickets restaurant", "Ambiance startup dynamique"]
     },
     {

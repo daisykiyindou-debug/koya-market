@@ -13,6 +13,13 @@
   @apply relative z-10 text-center text-white max-w-4xl mx-auto px-4;
 }
 
+/* Contain Leaflet's internal z-indexes so Dialogs/Sheets stay on top */
+.leaflet-container {
+  isolation: isolate;
+  z-index: 0;
+}
+
+
 /* Product Cards */
 .product-card {
   @apply relative bg-white rounded-2xl overflow-hidden border border-border transition-all duration-300;

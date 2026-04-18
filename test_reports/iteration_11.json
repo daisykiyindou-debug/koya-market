@@ -1,0 +1,79 @@
+{
+  "summary": "Round 11 testing completed. All 12 backend tests passed. Guest cart persistence feature fully functional: /api/cart/compute (public) and /api/cart/merge (auth) endpoints work correctly. Frontend guest cart flow verified: add items as guest, view cart with prices, merge on login. Hero image updated to /images/hero-delivery.jpg, typo fixed to 'afro-caraïbéennes', /zones-livraison route removed, footer link removed. Leaflet z-index CSS fix verified in App.css.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_results": {
+    "cart_compute_endpoint": {
+      "status": "PASS",
+      "details": "POST /api/cart/compute (no auth) returns enriched cart with product details, subtotal, minimum_reached, amount_to_minimum. Unknown product_ids silently skipped."
+    },
+    "cart_merge_endpoint": {
+      "status": "PASS",
+      "details": "POST /api/cart/merge (auth required) merges guest items into user cart. Quantities for duplicate product_ids are ADDED (not replaced). Returns fully enriched cart."
+    },
+    "guest_add_to_cart": {
+      "status": "PASS",
+      "details": "Guest can add products via quick-add popover. Items stored in localStorage.koya_guest_cart. Header cart icon shows non-zero euro total."
+    },
+    "guest_cart_page": {
+      "status": "PASS",
+      "details": "Guest cart page (/panier) displays items with prices, quantity +/- controls, 50€ minimum warning banner, and total calculation."
+    },
+    "guest_checkout_redirect": {
+      "status": "PASS",
+      "details": "Checkout button disabled when minimum not reached. When enabled, clicking routes to /checkout which (ProtectedRoute) redirects to /connexion."
+    },
+    "cart_merge_on_login": {
+      "status": "PASS",
+      "details": "Guest with items in localStorage -> login -> cart merged server-side -> localStorage.koya_guest_cart removed -> /panier shows merged cart."
+    },
+    "hero_image_update": {
+      "status": "PASS",
+      "details": "Home page hero uses /images/hero-delivery.jpg (warm delivery handoff photo). File exists at /app/frontend/public/images/hero-delivery.jpg."
+    },
+    "typo_fix": {
+      "status": "PASS",
+      "details": "Headline reads 'Les saveurs afro-caraïbéennes' (correct spelling with ï dieresis). No 'afro-caribéennes' occurrences found."
+    },
+    "delivery_zone_page_removed": {
+      "status": "PASS",
+      "details": "/zones-livraison redirects to / (fallback route). Footer does NOT contain 'Zones de livraison' link."
+    },
+    "leaflet_zindex_fix": {
+      "status": "PASS",
+      "details": "App.css contains '.leaflet-container { isolation: isolate; z-index: 0; }' to contain Leaflet's internal z-indexes so Dialogs appear on top."
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_koya_round11.py",
+    "/app/test_reports/pytest/pytest_round11_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_koya_round11.py"
+  ],
+  "success_rate": {
+    "backend": "100% (12/12 passed)",
+    "frontend": "100% (all Round 11 features verified)"
+  },
+  "test_credentials": {
+    "main_test_user": "client@koyamarket.com / Koya2026"
+  },
+  "seed_data_creation": "Test order ORD-D4A2669D created for tracking page testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Round 11 guest cart persistence fully implemented: 1) POST /api/cart/compute (public) computes enriched cart from {items: [{product_id, quantity}]}. 2) POST /api/cart/merge (auth) merges guest items into user cart, ADDING quantities for duplicates. 3) CartContext.js uses localStorage key 'koya_guest_cart' and mergedRef to prevent double-merge. 4) CartPage.js removed !isAuthenticated guard so guests see their cart. 5) ProductCard.js and CataloguePage.js removed login-required guards from handleAddToCart. 6) AuthPage.js navigates to location.state.from.pathname after login (preserves /checkout intent). 7) Hero image at /images/hero-delivery.jpg. 8) Typo fixed: 'afro-caraïbéennes'. 9) /zones-livraison route and DeliveryZonePage.js removed. 10) Leaflet z-index fix in App.css.",
+  "mocked_apis": {
+    "payment_checkout": "MOCKED - Payment/Checkout is simulated with fake 4242 card and 2s delay",
+    "order_tracking_location": "MOCKED - Driver location and ETA are simulated based on time elapsed",
+    "email_sms_notifications": "MOCKED - Email/SMS notifications are not actually sent"
+  }
+}

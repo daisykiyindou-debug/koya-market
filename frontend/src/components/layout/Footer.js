@@ -43,7 +43,6 @@ const Footer = () => {
     aide: [
       { name: 'Contact', path: '/contact' },
       { name: 'FAQ', path: '/contact#faq' },
-      { name: 'Zones de livraison', path: '/zones-livraison' },
       { name: 'KÔYA Market Pro', path: '/koya-pro' },
     ],
     legal: [
@@ -107,7 +106,7 @@ const Footer = () => {
               <span className="font-heading text-xl text-secondary ml-1">Market</span>
             </div>
             <p className="text-white/70 mb-6 max-w-xs">
-              Les saveurs afro-caribéennes livrées chez vous en 3 heures.
+              Les saveurs afro-caraïbéennes livrées chez vous en 3 heures.
             </p>
             <div className="space-y-3">
               <div className="flex items-center gap-3 text-white/70">

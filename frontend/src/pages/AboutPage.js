@@ -7,7 +7,7 @@ const AboutPage = () => {
   const navigate = useNavigate();
 
   const problems = [
-    { icon: Package, title: 'Accès limité', description: 'Difficulté à trouver des produits afro-caribéens authentiques près de chez soi.' },
+    { icon: Package, title: 'Accès limité', description: 'Difficulté à trouver des produits afro-caraïbéens authentiques près de chez soi.' },
     { icon: Truck, title: 'Éloignement', description: 'Les commerces spécialisés sont souvent loin, nécessitant de longs trajets.' },
     { icon: Clock, title: 'Manque de temps', description: 'Entre travail et vie de famille, faire ses courses devient un défi.' },
   ];
@@ -36,7 +36,7 @@ const AboutPage = () => {
             Qui sommes-nous ?
           </h1>
           <p className="text-xl text-white/80 max-w-2xl mx-auto">
-            KÔYA Market, c'est l'histoire d'une passion pour les saveurs afro-caribéennes et d'une volonté de les rendre accessibles à tous.
+            KÔYA Market, c'est l'histoire d'une passion pour les saveurs afro-caraïbéennes et d'une volonté de les rendre accessibles à tous.
           </p>
         </div>
       </section>
@@ -54,7 +54,7 @@ const AboutPage = () => {
               </h2>
               <p className="text-muted-foreground text-lg mb-6">
                 Fondé en 2023, KÔYA Market est né d'un constat simple : trop de personnes 
-                peinent à trouver les produits afro-caribéens qui leur rappellent leurs racines, 
+                peinent à trouver les produits afro-caraïbéens qui leur rappellent leurs racines, 
                 leurs traditions culinaires et les saveurs de leur enfance.
               </p>
               <p className="text-muted-foreground text-lg">
@@ -88,7 +88,7 @@ const AboutPage = () => {
               Des obstacles au quotidien
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Avant KÔYA Market, faire ses courses afro-caribéennes était souvent un parcours du combattant.
+              Avant KÔYA Market, faire ses courses afro-caraïbéennes était souvent un parcours du combattant.
             </p>
           </div>
 
@@ -114,7 +114,7 @@ const AboutPage = () => {
               La solution KÔYA
             </span>
             <h2 className="font-heading text-3xl md:text-4xl font-semibold mb-4">
-              Votre épicerie afro-caribéenne à portée de main
+              Votre épicerie afro-caraïbéenne à portée de main
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               Nous avons créé KÔYA Market pour vous simplifier la vie et vous permettre de profiter 
@@ -169,7 +169,7 @@ const AboutPage = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg mb-1">Accessibilité</h3>
-                    <p className="text-white/70">Des prix justes pour rendre les produits afro-caribéens accessibles à tous.</p>
+                    <p className="text-white/70">Des prix justes pour rendre les produits afro-caraïbéens accessibles à tous.</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-4">
@@ -178,7 +178,7 @@ const AboutPage = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg mb-1">Culture</h3>
-                    <p className="text-white/70">Nous célébrons et partageons la richesse des cultures afro-caribéennes.</p>
+                    <p className="text-white/70">Nous célébrons et partageons la richesse des cultures afro-caraïbéennes.</p>
                   </div>
                 </div>
               </div>

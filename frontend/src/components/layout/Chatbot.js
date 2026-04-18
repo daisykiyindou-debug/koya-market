@@ -33,7 +33,7 @@ const FAQ_RESPONSES = {
   },
   'produits': {
     keywords: ['produit', 'frais', 'qualité', 'origine', 'provenance'],
-    response: "Tous nos produits frais sont sélectionnés le jour même et livrés dans des conditions optimales. Nous proposons plus de 2500 produits afro-caribéens de qualité."
+    response: "Tous nos produits frais sont sélectionnés le jour même et livrés dans des conditions optimales. Nous proposons plus de 2500 produits afro-caraïbéens de qualité."
   },
   'recette': {
     keywords: ['recette', 'cuisine', 'préparer', 'ingrédient'],

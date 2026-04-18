@@ -55,7 +55,7 @@ const HomePage = () => {
 
   const benefits = [
     { icon: Clock, title: 'Livraison en 3h', description: 'Recevez vos courses rapidement' },
-    { icon: Package, title: '+2500 produits', description: 'Large choix afro-caribéen' },
+    { icon: Package, title: '+2500 produits', description: 'Large choix afro-caraïbéen' },
     { icon: CheckCircle, title: 'Qualité garantie', description: 'Produits frais sélectionnés' },
     { icon: Truck, title: '7j/7 de 9h à 23h', description: 'Livraison tous les jours' },
   ];
@@ -73,13 +73,13 @@ const HomePage = () => {
       <section className="hero-section" data-testid="hero-section">
         <div 
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1695653422952-93bf055732fe?w=1920)' }}
+          style={{ backgroundImage: 'url(/images/hero-delivery.jpg)' }}
         />
         <div className="hero-overlay" />
         
         <div className="hero-content animate-fade-in">
           <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-semibold mb-4">
-            Les saveurs afro-caribéennes
+            Les saveurs afro-caraïbéennes
             <br />
             <span className="text-secondary">livrées chez vous</span>
           </h1>

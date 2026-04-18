@@ -15,12 +15,6 @@ const ProductCard = ({ product, onClick }) => {
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   const handleAddToCart = async () => {
-    if (!isAuthenticated) {
-      toast.error('Connexion requise', { description: 'Connectez-vous pour ajouter des produits au panier.' });
-      navigate('/connexion');
-      return;
-    }
-
     try {
       await addToCart(product.product_id, quantity);
       toast.success('Produit ajouté !', { description: `${quantity}x ${product.name} ajouté au panier.` });

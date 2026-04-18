@@ -286,7 +286,7 @@ const RecipesPage = () => {
       <div className="bg-primary text-white py-12">
         <div className="container-custom">
           <h1 className="font-heading text-3xl md:text-4xl font-semibold mb-4">Nos Recettes</h1>
-          <p className="text-white/70 mb-6">Découvrez les saveurs traditionnelles afro-caribéennes</p>
+          <p className="text-white/70 mb-6">Découvrez les saveurs traditionnelles afro-caraïbéennes</p>
           
           {/* Search */}
           <form onSubmit={handleSearch} className="max-w-xl">

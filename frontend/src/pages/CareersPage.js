@@ -159,7 +159,7 @@ const CareersPage = () => {
         <div className="container-custom text-center">
           <h1 className="font-heading text-3xl md:text-4xl font-semibold mb-4">Rejoignez l'équipe KÔYA</h1>
           <p className="text-white/70 max-w-2xl mx-auto">
-            Participez à l'aventure KÔYA Market et contribuez à rendre les produits afro-caribéens accessibles à tous.
+            Participez à l'aventure KÔYA Market et contribuez à rendre les produits afro-caraïbéens accessibles à tous.
           </p>
         </div>
       </div>

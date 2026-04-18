@@ -150,12 +150,6 @@ const CataloguePage = () => {
   };
 
   const handleAddToCart = async () => {
-    if (!isAuthenticated) {
-      toast.error('Connexion requise', { description: 'Connectez-vous pour ajouter des produits au panier.' });
-      navigate('/connexion');
-      return;
-    }
-
     try {
       await addToCart(selectedProduct.product_id, productQuantity);
       toast.success('Produit ajouté !', { description: `${selectedProduct.name} a été ajouté au panier.` });
@@ -250,7 +244,7 @@ const CataloguePage = () => {
       <div className="bg-primary text-white py-12">
         <div className="container-custom">
           <h1 className="font-heading text-3xl md:text-4xl font-semibold mb-4">Catalogue</h1>
-          <p className="text-white/70 mb-6">Découvrez notre sélection de produits afro-caribéens</p>
+          <p className="text-white/70 mb-6">Découvrez notre sélection de produits afro-caraïbéens</p>
           
           {/* Search */}
           <form onSubmit={handleSearch} className="max-w-xl">
