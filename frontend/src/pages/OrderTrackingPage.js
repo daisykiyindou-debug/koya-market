@@ -27,6 +27,9 @@ const OrderTrackingPage = () => {
   const [reviewsSubmitted, setReviewsSubmitted] = useState(false);
   const [existingReviews, setExistingReviews] = useState(null);
   const [viewingPhoto, setViewingPhoto] = useState(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/connexion'); return; }
@@ -187,9 +190,28 @@ const OrderTrackingPage = () => {
   const isDelivered = tracking.status === 'delivered';
   const isCancelled = tracking.status === 'cancelled';
   const showDriver = tracking.status === 'delivering' || tracking.status === 'delivered';
+  
+  // Calculate cancel deadline
+  const canCancel = tracking.status === 'pending' && order.delivery_date;
+  const cancelDeadline = canCancel ? new Date(new Date(order.delivery_date).getTime() - 48 * 60 * 60 * 1000) : null;
+  const canStillCancel = canCancel && cancelDeadline && cancelDeadline > new Date();
+
+  const handleCancelOrder = async () => {
+    setCancelling(true);
+    try {
+      await axios.post(`${API}/orders/${orderId}/cancel`, {}, { headers: { Authorization: `Bearer ${token}` } });
+      toast.success('Commande annulée', { description: 'Remboursement sous 10 jours.' });
+      setShowCancelDialog(false);
+      fetchData();
+    } catch (err) {
+      toast.error('Erreur', { description: err.response?.data?.detail || 'Impossible d\'annuler.' });
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className={`min-h-screen bg-muted/30 ${isCancelled ? 'text-muted-foreground' : ''}`}>
       <div className="container-custom py-8">
         <Button variant="ghost" onClick={() => navigate('/compte/commandes')} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" /> Mes commandes
@@ -209,7 +231,8 @@ const OrderTrackingPage = () => {
           </span>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress Bar - greyed if cancelled */}
+        {!isCancelled && (
         <div className="bg-white rounded-2xl p-6 border mb-6">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Progression</span>
@@ -222,6 +245,7 @@ const OrderTrackingPage = () => {
             ))}
           </div>
         </div>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Map + Driver */}
@@ -261,6 +285,18 @@ const OrderTrackingPage = () => {
                     </p>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Cancel option for pending orders */}
+            {canStillCancel && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
+                <p className="text-sm text-amber-800 mb-2">
+                  Vous pouvez annuler cette commande jusqu'au <strong>{cancelDeadline.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</strong>. Après cette date, l'annulation ne sera plus possible.
+                </p>
+                <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setShowCancelDialog(true)} data-testid="tracking-cancel-btn">
+                  Annuler la commande
+                </Button>
               </div>
             )}
 
@@ -386,21 +422,31 @@ const OrderTrackingPage = () => {
                       </span>
                       <label className="flex items-center gap-1 text-xs text-primary cursor-pointer hover:underline">
                         <Camera className="w-3 h-3" />
-                        <span>Ajouter une photo</span>
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                        <span>{uploadingPhoto === item.product_id ? 'Upload...' : 'Ajouter une photo'}</span>
+                        <input type="file" accept="image/*" className="hidden" disabled={uploadingPhoto === item.product_id} data-testid={`upload-photo-${item.product_id}`} onChange={async (e) => {
                           const file = e.target.files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                              setProductReviews(prev => ({
-                                ...prev,
-                                [item.product_id]: {
-                                  ...(prev[item.product_id] || {}),
-                                  image_urls: [...(prev[item.product_id]?.image_urls || []), ev.target.result]
-                                }
-                              }));
-                            };
-                            reader.readAsDataURL(file);
+                          if (!file) return;
+                          setUploadingPhoto(item.product_id);
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            const res = await axios.post(`${API}/upload/review-photo`, formData, {
+                              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+                            });
+                            const fullUrl = `${process.env.REACT_APP_BACKEND_URL}${res.data.url}`;
+                            setProductReviews(prev => ({
+                              ...prev,
+                              [item.product_id]: {
+                                ...(prev[item.product_id] || {}),
+                                image_urls: [...(prev[item.product_id]?.image_urls || []), fullUrl]
+                              }
+                            }));
+                            toast.success('Photo ajoutée');
+                          } catch (err) {
+                            toast.error('Erreur', { description: err.response?.data?.detail || 'Impossible d\'uploader la photo.' });
+                          } finally {
+                            setUploadingPhoto(null);
+                            e.target.value = '';
                           }
                         }} />
                       </label>
@@ -523,6 +569,38 @@ const OrderTrackingPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Cancel Confirmation Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Annuler la commande ?</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <p>Êtes-vous sûr de vouloir annuler cette commande ?</p>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <p className="text-sm text-amber-800 font-medium">Remboursement</p>
+              <p className="text-sm text-amber-700 mt-1">
+                Le remboursement de <strong>{order.total.toFixed(2)}€</strong> sera effectué sous 10 jours ouvrés sur votre carte de paiement.
+              </p>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+              <p className="text-sm text-red-800 font-medium">Points de fidélité</p>
+              <p className="text-sm text-red-700 mt-1">
+                Vous perdrez <strong>{Math.floor(order.subtotal || order.total || 0)} points</strong> de fidélité associés à cette commande.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)} disabled={cancelling}>
+              Non, garder ma commande
+            </Button>
+            <Button variant="destructive" onClick={handleCancelOrder} disabled={cancelling} data-testid="tracking-confirm-cancel-btn">
+              {cancelling ? 'Annulation…' : 'Oui, annuler'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Driver Info Dialog */}
       <Dialog open={driverInfoOpen} onOpenChange={setDriverInfoOpen}>

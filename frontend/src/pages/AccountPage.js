@@ -343,10 +343,18 @@ const AccountPage = () => {
                               onClick={() => navigate(`/commande/${order.order_id}`)}
                               data-testid={`track-order-${order.order_id}`}
                             >
-                              Suivre
+                              {order.status === 'cancelled' ? 'Voir détails' : 'Suivre'}
                             </Button>
                           </div>
                         </div>
+                        {order.status === 'cancelled' && (
+                          <div className="mt-3 pt-3 border-t border-red-200/50 text-xs text-red-700 space-y-1">
+                            {order.cancelled_at && (
+                              <p>Annulée le {format(new Date(order.cancelled_at), 'dd MMMM yyyy', { locale: fr })}</p>
+                            )}
+                            <p>Remboursement de <strong>{order.total.toFixed(2)}€</strong> sous 10 jours ouvrés.</p>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

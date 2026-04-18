@@ -100,16 +100,15 @@ const AuthPage = () => {
             {!isLogin && (
               <>
                 <div>
-                  <label className="form-label">Nom complet</label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
                     <input
                       type="text"
                       name="name"
                       value={formData.name}
                       onChange={handleChange}
-                      placeholder="Jean Dupont"
-                      className="form-input pl-10"
+                      placeholder="Nom complet"
+                      className="form-input !pl-11 bg-white"
                       required={!isLogin}
                       data-testid="register-name-input"
                     />
@@ -117,16 +116,15 @@ const AuthPage = () => {
                 </div>
 
                 <div>
-                  <label className="form-label">Téléphone (optionnel)</label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
                     <input
                       type="tel"
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      placeholder="06 12 34 56 78"
-                      className="form-input pl-10"
+                      placeholder="Téléphone (optionnel)"
+                      className="form-input !pl-11 bg-white"
                       data-testid="register-phone-input"
                     />
                   </div>
@@ -143,7 +141,7 @@ const AuthPage = () => {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Email"
-                  className="form-input pl-11 bg-white"
+                  className="form-input !pl-11 bg-white"
                   required
                   data-testid="email-input"
                 />
@@ -159,7 +157,7 @@ const AuthPage = () => {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Mot de passe"
-                  className="form-input pl-11 pr-10 bg-white"
+                  className="form-input !pl-11 !pr-10 bg-white"
                   required
                   minLength={6}
                   data-testid="password-input"

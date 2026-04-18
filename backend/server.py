@@ -1,11 +1,13 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, UploadFile, File
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import httpx
+import shutil
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
@@ -1401,6 +1403,21 @@ async def get_order_tracking(order_id: str, user: dict = Depends(get_current_use
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
+    # If order is cancelled, return cancelled status without simulating progression
+    if order.get("status") == "cancelled":
+        return {
+            "order_id": order_id,
+            "status": "cancelled",
+            "driver_name": order.get("driver_name", ""),
+            "driver_phone": order.get("driver_phone", ""),
+            "steps": order.get("tracking", {}).get("steps", []),
+            "estimated_arrival": "Annulée",
+            "driver_lat": 48.8566,
+            "driver_lng": 2.3522,
+            "delivery_slot": order.get("delivery_slot"),
+            "delivery_date": order.get("delivery_date")
+        }
+    
     # Simulate tracking progress based on time elapsed
     import random as _rand
     created_at = datetime.fromisoformat(order["created_at"]) if isinstance(order["created_at"], str) else order["created_at"]
@@ -1467,8 +1484,38 @@ async def root():
 async def health():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
+# ==================== PHOTO UPLOAD ====================
+
+UPLOADS_DIR = ROOT_DIR / "uploads" / "reviews"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"}
+MAX_IMAGE_SIZE = 8 * 1024 * 1024  # 8 MB
+
+@api_router.post("/upload/review-photo")
+async def upload_review_photo(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    """Upload a real photo file for a review. Returns the public URL."""
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_IMAGE_EXT:
+        raise HTTPException(status_code=400, detail=f"Format non supporté. Utilisez : {', '.join(sorted(ALLOWED_IMAGE_EXT))}")
+
+    # Read and enforce size limit
+    contents = await file.read()
+    if len(contents) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=400, detail="Fichier trop volumineux (max 8 Mo).")
+
+    filename = f"{uuid.uuid4().hex}{ext}"
+    file_path = UPLOADS_DIR / filename
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    public_url = f"/api/uploads/reviews/{filename}"
+    return {"url": public_url, "filename": filename}
+
 # Include router
 app.include_router(api_router)
+
+# Serve uploaded photos via /api/uploads/reviews (so ingress routes correctly)
+app.mount("/api/uploads/reviews", StaticFiles(directory=str(UPLOADS_DIR)), name="review-uploads")
 
 # CORS
 app.add_middleware(
