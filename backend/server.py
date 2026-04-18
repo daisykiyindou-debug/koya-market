@@ -1215,6 +1215,17 @@ async def review_driver(review: DriverReviewCreate, user: dict = Depends(get_cur
     response_doc = {k: v for k, v in review_doc.items() if k != "_id"}
     return {**response_doc, "points_earned": 10}
 
+# Driver photo directory (shared between /driver/{name}/info and /orders/{id}/tracking)
+DRIVER_PHOTOS = {
+    "Mamadou D.": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200",
+    "Ibrahim K.": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
+    "Fatou S.": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
+    "Abdoulaye M.": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200",
+    "Aïssatou B.": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200",
+    "Moussa T.": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200",
+}
+DEFAULT_DRIVER_PHOTO = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200"
+
 @api_router.get("/driver/{driver_name}/info")
 async def get_driver_info(driver_name: str):
     reviews = await db.driver_reviews.find({"driver_name": driver_name}, {"_id": 0}).sort("created_at", -1).limit(5).to_list(5)
@@ -1224,19 +1235,9 @@ async def get_driver_info(driver_name: str):
     if reviews:
         avg_rating = round(sum(r["rating"] for r in reviews) / len(reviews), 1)
     
-    # Simulated driver profile
-    driver_photos = {
-        "Mamadou D.": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200",
-        "Ibrahim K.": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200",
-        "Fatou S.": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200",
-        "Abdoulaye M.": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200",
-        "Aïssatou B.": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200",
-        "Moussa T.": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200",
-    }
-    
     return {
         "name": driver_name,
-        "photo": driver_photos.get(driver_name, "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200"),
+        "photo": DRIVER_PHOTOS.get(driver_name, DEFAULT_DRIVER_PHOTO),
         "rating": avg_rating,
         "total_reviews": total_reviews,
         "total_deliveries": total_reviews + 127,
@@ -1539,6 +1540,7 @@ async def get_order_tracking(order_id: str, user: dict = Depends(get_current_use
         "status": current_status,
         "driver_name": order.get("driver_name", "Mamadou D."),
         "driver_phone": order.get("driver_phone", "06 12 34 56 78"),
+        "driver_photo": DRIVER_PHOTOS.get(order.get("driver_name", ""), DEFAULT_DRIVER_PHOTO),
         "steps": steps,
         "estimated_arrival": f"{eta_minutes} min" if eta_minutes > 0 else "Livrée",
         "driver_lat": dest_lat,

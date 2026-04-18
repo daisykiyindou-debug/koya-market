@@ -306,7 +306,7 @@ const OrderTrackingPage = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <button onClick={() => fetchDriverInfo(tracking.driver_name)} className="relative" data-testid="driver-photo-btn">
-                    <img src={`https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100`} alt={tracking.driver_name} className="w-14 h-14 rounded-full object-cover border-2 border-primary cursor-pointer hover:opacity-80 transition-opacity" />
+                    <img src={tracking.driver_photo} alt={tracking.driver_name} className="w-14 h-14 rounded-full object-cover border-2 border-primary cursor-pointer hover:opacity-80 transition-opacity" />
                   </button>
                   <div>
                     <p className="font-semibold" data-testid="driver-name">{tracking.driver_name}</p>
