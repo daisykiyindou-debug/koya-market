@@ -26,6 +26,7 @@ const OrderTrackingPage = () => {
   const [submittingReviews, setSubmittingReviews] = useState(false);
   const [reviewsSubmitted, setReviewsSubmitted] = useState(false);
   const [existingReviews, setExistingReviews] = useState(null);
+  const [viewingPhoto, setViewingPhoto] = useState(null);
 
   useEffect(() => {
     if (!isAuthenticated) { navigate('/connexion'); return; }
@@ -239,6 +240,30 @@ const OrderTrackingPage = () => {
               </div>
             )}
 
+            {/* Pending / Preparing message */}
+            {(tracking.status === 'pending' || tracking.status === 'preparing') && (
+              <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    {tracking.status === 'pending' ? <Clock className="w-6 h-6 text-primary" /> : <Package className="w-6 h-6 text-primary" />}
+                  </div>
+                  <div>
+                    <h3 className="font-heading font-semibold mb-1">
+                      {tracking.status === 'pending' ? 'Commande en attente' : 'Commande en préparation'}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      {tracking.status === 'pending' 
+                        ? 'Votre commande a été enregistrée et sera bientôt prise en charge par notre équipe.'
+                        : 'Nos préparateurs sélectionnent vos produits avec soin.'}
+                    </p>
+                    <p className="text-sm text-primary font-medium">
+                      Dès que votre livreur sera en chemin, une carte avec le suivi en temps réel apparaîtra ici. Vous serez notifié par SMS.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Driver Card - only when delivering or delivered */}
             {showDriver && (
             <div className="bg-white rounded-2xl p-6 border">
@@ -309,8 +334,12 @@ const OrderTrackingPage = () => {
                         </div>
                         <p className="text-sm text-muted-foreground">{r.comment}</p>
                         {r.image_urls?.length > 0 && (
-                          <div className="flex gap-2 mt-2">
-                            {r.image_urls.map((url, k) => <img key={k} src={url} alt="" className="w-16 h-16 rounded-lg object-cover" />)}
+                          <div className="flex gap-2 mt-2 flex-wrap">
+                            {r.image_urls.map((url, k) => (
+                              <button key={k} onClick={() => setViewingPhoto(url)} className="focus:outline-none hover:opacity-80">
+                                <img src={url} alt="" className="w-16 h-16 rounded-lg object-cover border hover:border-primary cursor-pointer" />
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -535,6 +564,27 @@ const OrderTrackingPage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Photo Lightbox */}
+      {viewingPhoto && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setViewingPhoto(null)}
+        >
+          <button 
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30"
+            onClick={() => setViewingPhoto(null)}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img 
+            src={viewingPhoto} 
+            alt="Photo agrandie" 
+            className="max-w-full max-h-[85vh] rounded-xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };

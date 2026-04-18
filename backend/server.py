@@ -1091,12 +1091,15 @@ async def create_review(review: ReviewCreate, user: dict = Depends(get_current_u
             {"$set": {"rating": round(result[0]["avg_rating"], 1), "reviews_count": result[0]["count"]}}
         )
     
-    # Award 5 loyalty points for review
-    await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"loyalty_points": 5}})
+    # Award loyalty points: +10 for review, +20 if photo included
+    points_earned = 10
+    if review.image_urls and len(review.image_urls) > 0:
+        points_earned += 20
+    await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"loyalty_points": points_earned}})
     
     # Exclude MongoDB _id from response
     response_doc = {k: v for k, v in review_doc.items() if k != "_id"}
-    return {**response_doc, "points_earned": 5}
+    return {**response_doc, "points_earned": points_earned}
 
 class DriverReviewCreate(BaseModel):
     order_id: str
@@ -1130,12 +1133,12 @@ async def review_driver(review: DriverReviewCreate, user: dict = Depends(get_cur
     }
     await db.driver_reviews.insert_one(review_doc)
     
-    # Award 5 loyalty points
-    await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"loyalty_points": 5}})
+    # Award 10 loyalty points for driver review
+    await db.users.update_one({"user_id": user["user_id"]}, {"$inc": {"loyalty_points": 10}})
     
     # Exclude MongoDB _id from response
     response_doc = {k: v for k, v in review_doc.items() if k != "_id"}
-    return {**response_doc, "points_earned": 5}
+    return {**response_doc, "points_earned": 10}
 
 @api_router.get("/driver/{driver_name}/info")
 async def get_driver_info(driver_name: str):

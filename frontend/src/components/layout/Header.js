@@ -19,7 +19,7 @@ const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuth();
-  const { cartItemCount } = useCart();
+  const { cartItemCount, cartSubtotal } = useCart();
 
   const navLinks = [
     { name: 'Catalogue', path: '/catalogue' },
@@ -89,13 +89,13 @@ const Header = () => {
             {/* Cart */}
             <Link
               to="/panier"
-              className="relative p-2 rounded-full hover:bg-muted transition-colors"
+              className="relative p-2 rounded-full hover:bg-muted transition-colors flex items-center gap-1"
               data-testid="cart-btn"
             >
               <ShoppingCart className="w-5 h-5" />
-              {cartItemCount > 0 && (
-                <span className="cart-badge" data-testid="cart-count">
-                  {cartItemCount}
+              {cartSubtotal > 0 && (
+                <span className="text-sm font-semibold text-primary" data-testid="cart-price">
+                  {cartSubtotal.toFixed(2)}€
                 </span>
               )}
             </Link>
@@ -126,6 +126,9 @@ const Header = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/compte/fidelite" data-testid="loyalty-link">Programme fidélité</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/compte/parrainage" data-testid="referral-link">Parrainage</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive" data-testid="logout-btn">

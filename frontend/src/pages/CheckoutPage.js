@@ -53,6 +53,9 @@ const CheckoutPage = () => {
     is_default: false
   });
   const [showAddressDialog, setShowAddressDialog] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
+  const [referralApplied, setReferralApplied] = useState(false);
+  const [referralLoading, setReferralLoading] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -454,6 +457,50 @@ const CheckoutPage = () => {
                   <p className="text-sm text-muted-foreground">
                     Les codes promo et fidélité peuvent être appliqués directement dans le panier avant de passer commande.
                   </p>
+                </div>
+
+                {/* Referral Code */}
+                <div className="mb-6 p-4 bg-secondary/5 border border-secondary/20 rounded-xl">
+                  <p className="font-medium text-sm mb-2 flex items-center gap-2">
+                    <Gift className="w-4 h-4 text-secondary" />
+                    Code parrainage
+                  </p>
+                  {referralApplied ? (
+                    <p className="text-sm text-green-700 flex items-center gap-2">
+                      <Check className="w-4 h-4" /> Code appliqué ! 200 points seront crédités après cette commande.
+                    </p>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={referralCode}
+                        onChange={(e) => setReferralCode(e.target.value)}
+                        placeholder="Code KOYA-XXXXXX"
+                        className="flex-1 px-3 py-2 rounded-lg border border-border text-sm focus:outline-none focus:border-secondary"
+                        data-testid="checkout-referral-input"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={referralLoading || !referralCode.trim()}
+                        onClick={async () => {
+                          setReferralLoading(true);
+                          try {
+                            await axios.post(`${API}/referral/apply`, { referral_code: referralCode }, { headers: { Authorization: `Bearer ${token}` } });
+                            setReferralApplied(true);
+                            toast.success('Code parrainage appliqué !');
+                          } catch (err) {
+                            toast.error('Code invalide', { description: err.response?.data?.detail || 'Code parrainage invalide.' });
+                          } finally {
+                            setReferralLoading(false);
+                          }
+                        }}
+                        data-testid="checkout-referral-apply"
+                      >
+                        {referralLoading ? '...' : 'Appliquer'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Simulated Payment Form */}

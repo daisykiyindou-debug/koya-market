@@ -137,11 +137,13 @@ export const CartProvider = ({ children }) => {
   };
 
   const cartItemCount = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  const cartSubtotal = cart.subtotal || 0;
 
   const value = {
     cart,
     loading,
     cartItemCount,
+    cartSubtotal,
     addToCart,
     updateCartItem,
     removeFromCart,

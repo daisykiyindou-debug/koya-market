@@ -289,7 +289,11 @@ const AccountPage = () => {
                 ) : (
                   <div className="space-y-4">
                     {orders.map((order) => (
-                      <div key={order.order_id} className="border rounded-xl p-4">
+                      <div 
+                        key={order.order_id}
+                        className={`border rounded-xl p-4 ${order.status === 'cancelled' ? 'opacity-50 bg-muted/30' : ''}`}
+                        data-testid={`order-${order.order_id}`}
+                      >
                         <div className="flex items-center justify-between mb-3">
                           <div>
                             <p className="font-medium">{order.order_id}</p>
@@ -315,7 +319,11 @@ const AccountPage = () => {
                           </div>
                           <div className="text-right flex items-center gap-3">
                             <p className="font-semibold">{order.total.toFixed(2)}€</p>
-                            {order.status === 'pending' && (
+                            {order.status === 'pending' && (() => {
+                              const deliveryDate = new Date(order.delivery_date);
+                              const hoursUntil = (deliveryDate - new Date()) / (1000 * 60 * 60);
+                              return hoursUntil > 48;
+                            })() && (
                               <Button 
                                 variant="outline" 
                                 size="sm"

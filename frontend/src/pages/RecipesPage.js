@@ -30,7 +30,7 @@ const DIFFICULTIES = [
 const RecipesPage = () => {
   const { recipeId } = useParams();
   const navigate = useNavigate();
-  const { addRecipeIngredients } = useCart();
+  const { addRecipeIngredients, addToCart } = useCart();
   const { isAuthenticated } = useAuth();
 
   const [recipes, setRecipes] = useState([]);
@@ -227,10 +227,34 @@ const RecipesPage = () => {
                 <ul className="space-y-3 mb-6">
                   {selectedRecipe.ingredients.map((ingredient, index) => (
                     <li key={index} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                      <span>{ingredient.name}</span>
-                      <span className="text-primary font-medium" data-testid={`ingredient-qty-${index}`}>
-                        {getAdjustedQuantity(ingredient)} {ingredient.unit}
-                      </span>
+                      <div>
+                        <span>{ingredient.name}</span>
+                        <span className="text-primary font-medium ml-2" data-testid={`ingredient-qty-${index}`}>
+                          {getAdjustedQuantity(ingredient)} {ingredient.unit}
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        onClick={async () => {
+                          if (!isAuthenticated) {
+                            toast.error('Connexion requise');
+                            navigate('/connexion');
+                            return;
+                          }
+                          try {
+                            const qty = Math.max(1, Math.round(getAdjustedQuantity(ingredient)));
+                            await addToCart(ingredient.product_id, qty);
+                            toast.success(`${ingredient.name} ajouté au panier`);
+                          } catch (e) {
+                            toast.error('Erreur');
+                          }
+                        }}
+                        data-testid={`add-ingredient-${index}`}
+                      >
+                        <Plus className="w-3 h-3 mr-1" /> Ajouter
+                      </Button>
                     </li>
                   ))}
                 </ul>

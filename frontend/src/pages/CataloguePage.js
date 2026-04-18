@@ -55,6 +55,7 @@ const CataloguePage = () => {
   const [productQuantity, setProductQuantity] = useState(1);
   const [productReviews, setProductReviews] = useState([]);
   const [relatedRecipes, setRelatedRecipes] = useState([]);
+  const [viewingPhoto, setViewingPhoto] = useState(null);
 
   useEffect(() => {
     fetchCategories();
@@ -484,9 +485,16 @@ const CataloguePage = () => {
                         </div>
                         <p className="text-sm text-muted-foreground">{review.comment}</p>
                         {review.image_urls?.length > 0 && (
-                          <div className="flex gap-2 mt-3">
+                          <div className="flex gap-2 mt-3 flex-wrap">
                             {review.image_urls.map((url, idx) => (
-                              <img key={idx} src={url} alt="Photo avis" className="w-20 h-20 rounded-lg object-cover border" />
+                              <button
+                                key={idx}
+                                onClick={(e) => { e.stopPropagation(); setViewingPhoto(url); }}
+                                className="focus:outline-none hover:opacity-80 transition-opacity"
+                                data-testid={`review-photo-${review.review_id}-${idx}`}
+                              >
+                                <img src={url} alt="Photo avis" className="w-20 h-20 rounded-lg object-cover border hover:border-primary cursor-pointer" />
+                              </button>
                             ))}
                           </div>
                         )}
@@ -501,6 +509,28 @@ const CataloguePage = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Photo Lightbox */}
+      {viewingPhoto && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setViewingPhoto(null)}
+          data-testid="photo-lightbox"
+        >
+          <button 
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white hover:bg-white/30 transition-colors"
+            onClick={() => setViewingPhoto(null)}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img 
+            src={viewingPhoto} 
+            alt="Photo avis agrandie" 
+            className="max-w-full max-h-[85vh] rounded-xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };

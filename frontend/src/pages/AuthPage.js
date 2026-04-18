@@ -135,16 +135,15 @@ const AuthPage = () => {
             )}
 
             <div>
-              <label className="form-label">Email</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="email@exemple.com"
-                  className="form-input pl-10"
+                  placeholder="Email"
+                  className="form-input pl-11 bg-white"
                   required
                   data-testid="email-input"
                 />
@@ -152,16 +151,15 @@ const AuthPage = () => {
             </div>
 
             <div>
-              <label className="form-label">Mot de passe</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="••••••••"
-                  className="form-input pl-10 pr-10"
+                  placeholder="Mot de passe"
+                  className="form-input pl-11 pr-10 bg-white"
                   required
                   minLength={6}
                   data-testid="password-input"
